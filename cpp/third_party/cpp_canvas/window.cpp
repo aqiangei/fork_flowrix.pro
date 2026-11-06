@@ -931,14 +931,14 @@ struct Window::Impl {
       const float x = static_cast<float>(targetX) * toDesign;
       const float y = static_cast<float>(targetY) * toDesign;
       if (phase == TouchPhase::Began) {
-        // A tap on a field is the one gesture this window does NOT consume.
-        // Every browser refuses to raise its keyboard for a focus() made
-        // during a touch it has been told to ignore, and a consumed touch
-        // produces no click either -- so consuming it would leave no moment
-        // at all where the keyboard could be asked for. See onClick.
+        // Let field gestures through so the browser can also deliver a click
+        // on devices that use it to activate their keyboard.
         if (impl->onKeyboardField(x, y)) {
           impl->passthrough = point.identifier;
           impl->passthroughLive = true;
+          impl->keyboardTapX = point.clientX;
+          impl->keyboardTapY = point.clientY;
+          impl->keyboardTapMoved = false;
         } else {
           // Anywhere else takes the keyboard away, and needs no gesture to
           // do it.
@@ -947,12 +947,23 @@ struct Window::Impl {
       }
       if (impl->passthroughLive && point.identifier == impl->passthrough) {
         leaveToThePage = true;
+        if (std::abs(static_cast<double>(point.clientX) - impl->keyboardTapX) > 8 ||
+            std::abs(static_cast<double>(point.clientY) - impl->keyboardTapY) > 8) {
+          impl->keyboardTapMoved = true;
+        }
         if (phase == TouchPhase::Ended) {
           impl->passthroughLive = false;
+          if (type == EMSCRIPTEN_EVENT_TOUCHCANCEL) impl->keyboardTapMoved = true;
           // The page is about to replay this gesture as mousedown, mouseup
           // and click. The first two are already in this frame's stream from
           // the mirror, so they are dropped -- see onMouse.
           impl->ghostUntilMillis = emscripten_get_now() + kGhostWindowMillis;
+          // Focus synchronously on a trusted release. A synthetic click can
+          // be absent, and focus from the next animation frame cannot open
+          // the keyboard on mobile.
+          if (impl->eventTrusted && !impl->keyboardTapMoved) {
+            impl->raiseKeyboard(/*reset=*/false);
+          }
         }
       }
       impl->recordTouch(phase, point.identifier, x, y);
@@ -964,17 +975,12 @@ struct Window::Impl {
     return leaveToThePage ? EM_FALSE : EM_TRUE;
   }
 
-  /// The keyboard, raised from the one event every mobile browser honours.
-  ///
-  /// It has to be a real gesture -- a browser will not open its keyboard for a
-  /// focus() made from a timer or an animation frame -- and of the events a
-  /// gesture produces, `click` is the one that works everywhere. The browser
-  /// build focuses its own hidden input from exactly here, which is the
-  /// evidence this follows: raising it from `touchstart` instead looks right,
-  /// passes a desktop browser's touch emulation, and does nothing at all on a
-  /// phone.
+  /// Focus from desktop clicks and use the browser's click as a second
+  /// opportunity after a touch release, without resetting composition.
   static EM_BOOL onClick(int type, const EmscriptenMouseEvent* event, void* userData) {
     Impl* impl = implOf(userData);
+    const bool followsTouch = emscripten_get_now() < impl->ghostUntilMillis;
+    if (followsTouch && impl->keyboardTapMoved) return EM_TRUE;
     const float toDesign = impl->fit > 0 ? static_cast<float>(1.0 / impl->fit) : 1.0f;
     // Apply the same trust policy as movement, press, release and touch.
     double targetX = event->targetX, targetY = event->targetY;
@@ -984,8 +990,7 @@ struct Window::Impl {
     const float x = static_cast<float>(targetX) * toDesign;
     const float y = static_cast<float>(targetY) * toDesign;
     if (impl->onKeyboardField(x, y)) {
-      web_soft_keyboard(1);  // reset: new field
-      impl->softKeyboardUp = true;
+      impl->raiseKeyboard(/*reset=*/!followsTouch);
     }
     return EM_TRUE;
   }
@@ -1006,6 +1011,8 @@ struct Window::Impl {
   /// comes out of it.
   std::int64_t passthrough = 0;
   bool passthroughLive = false;
+  double keyboardTapX = 0, keyboardTapY = 0;
+  bool keyboardTapMoved = false;
   /// Until when the page's own mouse events are its replay of a touch this
   /// window already mirrored, rather than a mouse. Long enough to cover the
   /// mousedown/mouseup pair a browser synthesises after a touchend, which is
@@ -1163,6 +1170,7 @@ struct Window::Impl {
     impl->claimed.clear();
     impl->mirroring = false;
     impl->touchInside = false;
+    impl->passthroughLive = false;
     impl->gesture.cancel();
     return EM_TRUE;
   }
@@ -1718,6 +1726,10 @@ void Window::dismissSoftKeyboard() {
 
 void Window::ensureSoftKeyboard() {
 #ifdef __EMSCRIPTEN__
+  // On touch, a frame can run before the browser dispatches the tap's click.
+  // Focusing here can leave an input focused without ever opening the OS
+  // keyboard, so leave touch focus to onTouch/onClick.
+  if (impl_->passthroughLive || impl_->pointerIsTouch || web_coarse_pointer()) return;
   // Chat opened with Enter never hits onKeyboardField; without this the
   // canvas keeps document focus and OS IME toggles (Shift / Alt+Shift) miss.
   impl_->raiseKeyboard(/*reset=*/false);
