@@ -371,6 +371,8 @@ inline constexpr double kUniqueSpawnCooldownMillis = 20.0 * 60.0 * 1000.0;
 inline constexpr double kApexSpawnCooldownMillis = 0.0;
 inline constexpr double kBossUpgradeChance = 0.10;
 inline constexpr double kApexUpgradeChance = 0.20;
+inline constexpr double kSewerGarbageApexUpgradeChance = 0.30;
+inline constexpr int kJellyfishZoneApexLimit = 3;
 
 /// The sacrifice (petalIsSacrifice): what a flower that dies wearing one
 /// summons, and where it will not.
@@ -737,6 +739,7 @@ private:
         /// the shape is one creature's range, not a patch of ground.
         bool singular = false;
         bool extraApex = false;
+        bool sewerGarbageBoost = false;
         /// Index into bossClocks_: the biome of the map this band is drawn on.
         /// kInvalidIndex on a prestige twin, which keeps no clock.
         std::uint16_t biome = kInvalidIndex;
@@ -879,7 +882,8 @@ private:
     /// of that tier standing, and the upgrade roll lands. Apex is asked first.
     /// Starts nothing -- the clock is only charged once the upgraded mob is
     /// actually standing in the world.
-    Rarity rollBossUpgrade(World& world, const SpawnZone& zone, double nowMillis);
+    Rarity rollBossUpgrade(World& world, const SpawnZone& zone, double nowMillis,
+                           double apexChance);
 
     /// What two realms are compared by when the question is "the same biome":
     /// the biome's clock slot, or the realm itself for a realm no staged map

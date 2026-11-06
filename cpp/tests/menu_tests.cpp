@@ -95,7 +95,7 @@ bool ensureShippedContent() {
 // Talent points
 // ---------------------------------------------------------------------------
 
-TEST(talent_points_are_the_level_minus_what_the_tree_holds) {
+TEST(talent_points_include_level_bonuses_and_deduct_spent_tiers) {
     SkillSet skills;
     CHECK_EQ(skills.spent(), 0);
     CHECK_EQ(availableTalentPoints(10, skills), 10);
@@ -105,6 +105,9 @@ TEST(talent_points_are_the_level_minus_what_the_tree_holds) {
     skills.set(SkillId::Damage, rarityIndex(Rarity::Rare));
     CHECK_EQ(skills.spent(), 1 + 2 + 3);
     CHECK_EQ(availableTalentPoints(10, skills), 4);
+    CHECK_EQ(availableTalentPoints(109, skills), 103);
+    CHECK_EQ(availableTalentPoints(110, skills), 105);
+    CHECK_EQ(availableTalentPoints(120, skills), 116);
 
     // A tree worth more than the level can never mint negative points.
     CHECK_EQ(availableTalentPoints(2, skills), 0);
@@ -1233,7 +1236,7 @@ TEST(a_talent_tree_round_trips_through_the_database) {
             CHECK_EQ(record->skills.level(SkillId::Healing), rarityIndex(Rarity::Epic));
             CHECK_EQ(record->skills.level(SkillId::Absorbing), rarityIndex(Rarity::Common));
             CHECK_EQ(record->skills.level(SkillId::Reload), rarityIndex(Rarity::Unique));
-            CHECK_NEAR(record->skills.reloadScale(), 0.292, 1e-12);
+            CHECK_NEAR(record->skills.reloadScale(), 0.270, 1e-12);
             // The newest branch, at the tier the tree's own key table has to
             // spell correctly for a saved account to keep it.
             CHECK_EQ(record->skills.level(SkillId::PetHealth), rarityIndex(Rarity::Legendary));
@@ -1278,7 +1281,7 @@ TEST(a_saved_tier_past_the_top_of_its_branch_loads_clamped) {
         if (record != nullptr) {
             CHECK_EQ(skillTierCount(SkillId::Reload), rarityIndex(Rarity::Unique) + 1);
             CHECK_EQ(record->skills.level(SkillId::Reload), rarityIndex(Rarity::Unique));
-            CHECK_NEAR(record->skills.reloadScale(), 0.292, 1e-12);
+            CHECK_NEAR(record->skills.reloadScale(), 0.270, 1e-12);
         }
     }
     std::remove(path.c_str());

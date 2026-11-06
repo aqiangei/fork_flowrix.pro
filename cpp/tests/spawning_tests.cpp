@@ -5627,7 +5627,7 @@ TEST(a_neverambient_mob_never_comes_from_a_group_roll_however_hard_the_ground) {
     }
 }
 
-TEST(jellyfish_zone_keeps_two_apex_but_other_zones_keep_one) {
+TEST(jellyfish_zone_keeps_three_apex_but_other_zones_keep_one) {
     for (bool jelly : {false, true}) {
         SuperBand world;
         const auto& b = world.band;
@@ -5641,9 +5641,9 @@ TEST(jellyfish_zone_keeps_two_apex_but_other_zones_keep_one) {
         world.deal();
         onlyClock(world.sim).apexReadyMillis = 0;
         world.fill();
-        CHECK_EQ(mobsOfRarity(world.sim.world, Rarity::Apex), jelly ? 2 : 1);
+        CHECK_EQ(mobsOfRarity(world.sim.world, Rarity::Apex), jelly ? 3 : 1);
         world.fill();
-        CHECK_EQ(mobsOfRarity(world.sim.world, Rarity::Apex), jelly ? 2 : 1);
+        CHECK_EQ(mobsOfRarity(world.sim.world, Rarity::Apex), jelly ? 3 : 1);
         std::remove(path.c_str());
     }
 }

@@ -1,11 +1,8 @@
 #pragma once
 // The talent tree: what a branch is, what a tier costs, and what it multiplies.
 //
-// Talent points are DERIVED, never stored: a player has earned one per level
-// and spent whatever their tiers cost. Keeping a balance as well is a second
-// source of truth that drifts the first time a level-up and a spend race, and
-// the refund rule -- "resetting hands back your level in points" -- only makes
-// sense if the two were the same number all along.
+// Talent points are derived from level and spent tiers. A stored balance
+// would drift when levelling and spending race, or when the rules change.
 
 #include <array>
 #include <cstddef>
@@ -203,11 +200,10 @@ inline constexpr std::array<double, kLadderRarityCount> kAbsorbSkillScale = {
 
 /// Applied to petal COOLDOWNS, and the only table that shrinks its input: a
 /// reload is a wait, so the branch is worth having when the number goes DOWN.
-/// Geometric like the absorb curve, so every step is worth the same proportion
-/// of the last. The branch stops at unique (0.292); the apex entry is there
+/// The branch stops at unique (0.270); the apex entry is there
 /// only because every table spans the ladder, and no tree can reach it.
 inline constexpr std::array<double, kLadderRarityCount> kReloadSkillScale = {
-    1.0, 0.857, 0.735, 0.630, 0.540, 0.463, 0.397, 0.340, 0.292, 0.25,
+    1.0, 0.850, 0.720, 0.610, 0.520, 0.440, 0.375, 0.320, 0.270, 0.25,
 };
 
 /// `tier` is a rarity index, or -1 for a branch never touched. Out-of-range
@@ -295,10 +291,10 @@ inline int petalCopies(int copies, const SkillSet* skills) {
     return skills != nullptr ? skills->petalCopies(copies) : copies;
 }
 
-/// Points available: one per level, less what the tree already holds. Clamped
-/// at zero so a rebalance that raises a tier cost can never mint negative TP.
+/// One point per level, with a bonus at 110, 120, and each tenth level after.
 inline int availableTalentPoints(int level, const SkillSet& skills) {
-    const int free = level - skills.spent();
+    const int bonus = level > 100 ? (level - 100) / 10 : 0;
+    const int free = level - skills.spent() + bonus;
     return free > 0 ? free : 0;
 }
 

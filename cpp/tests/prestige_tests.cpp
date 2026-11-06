@@ -84,7 +84,7 @@ TEST(prestige_is_one_root_node_costing_225) {
     skills.set(SkillId::Prestige, 0);
     CHECK(skills.prestigeUnlocked());
     CHECK_EQ(skills.spent(), 225);
-    CHECK_EQ(availableTalentPoints(225, skills), 0);
+    CHECK_EQ(availableTalentPoints(214, skills), 0);
     // It multiplies nothing.
     CHECK_NEAR(skills.statScale(SkillId::Damage), 1.0, 1e-12);
     CHECK_NEAR(skills.reloadScale(), 1.0, 1e-12);
@@ -388,22 +388,22 @@ TEST(prestige_is_bought_with_225_points_and_not_on_the_maze_tree) {
               [](const std::string& path) {
                   seedUser(path, "rich", "password7");
                   seedUser(path, "poor", "password7");
-                  seedProgress(path, "rich", false, 225);
-                  seedProgress(path, "poor", false, 224);
+                  seedProgress(path, "rich", false, 214);
+                  seedProgress(path, "poor", false, 213);
               },
               dataDir(), 0);
     if (!h.ready) { CHECK(false); return; }
 
     NetClient poor;
     CHECK(logIn(h, poor, "poor"));
-    CHECK(awaitProfile(h, poor, [](const Profile& p) { return p.level == 224; }));
+    CHECK(awaitProfile(h, poor, [](const Profile& p) { return p.level == 213; }));
     poor.requestUpgradeSkill(SkillId::Prestige, 0);
     CHECK(h.stepUntil({&poor}, [&] { return sawText(poor, "need 225"); }, 60));
     CHECK(!poor.profile().skills.prestigeUnlocked());
 
     NetClient rich;
     CHECK(logIn(h, rich, "rich"));
-    CHECK(awaitProfile(h, rich, [](const Profile& p) { return p.level == 225; }));
+    CHECK(awaitProfile(h, rich, [](const Profile& p) { return p.level == 214; }));
     rich.requestUpgradeSkill(SkillId::Prestige, 0);
     CHECK(awaitProfile(h, rich, [](const Profile& p) {
         return p.skills.prestigeUnlocked() && p.talentPoints() == 0;

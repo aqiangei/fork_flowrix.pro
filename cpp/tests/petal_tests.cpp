@@ -1666,7 +1666,7 @@ TEST(the_reload_talent_shortens_a_broken_petals_cooldown) {
     if (!contentLoaded()) return;
 
     // The same break on two flowers, one of them at the top of the Reload
-    // branch. Basic's own cooldown is 1200ms, which unique cuts to 29.2%.
+    // branch. Basic's own cooldown is 1200ms, which unique cuts to 27%.
     const auto breakBasic = [](Rig& rig) {
         rig.equip(0, "basic");
         rig.settleEquips();
@@ -1684,7 +1684,7 @@ TEST(the_reload_talent_shortens_a_broken_petals_cooldown) {
     unique.world.add<PlayerSkillTree>(unique.player);
     unique.world.get<PlayerSkillTree>(unique.player)
         .skills.set(SkillId::Reload, rarityIndex(Rarity::Unique));
-    CHECK_NEAR(breakBasic(unique), 350.4, 1e-9);
+    CHECK_NEAR(breakBasic(unique), 324.0, 1e-9);
 
     // And it is a real wait, not just a shorter number on the slot. Twelve
     // ticks is 400ms: enough for unique to have its petal back, and far short
@@ -1728,7 +1728,7 @@ TEST(the_reload_talent_paces_a_projectile_petals_volleys) {
     CHECK(slow > 0);
     // Not an exact ratio: the first volley of each run is paced by the equip
     // reload rather than by the shot timer, so unique lands near, not exactly
-    // on, 1/0.292 times the count.
+    // on, 1/0.270 times the count.
     CHECK(fast >= slow * 3);
 }
 
@@ -1774,12 +1774,12 @@ TEST(a_golden_leaf_cuts_the_reload_of_the_rest_of_its_bar) {
     both.equip(1, "golden_leaf", Rarity::Ultra);
     both.equip(2, "golden_leaf", Rarity::Common);
     both.settleEquips();
-    CHECK_NEAR(breakSlot(both, 0), 350.4 * 0.825 * 0.975, 1e-9);
+    CHECK_NEAR(breakSlot(both, 0), 324.0 * 0.825 * 0.975, 1e-9);
     // And a leaf's reload is cut by the other leaf as well as by itself.
     const double commonLeafReload =
         registry.petalStats(petalId("golden_leaf"), Rarity::Common).reloadMillis;
     CHECK_NEAR(breakSlot(both, 2),
-               std::max(commonLeafReload * 0.292 * 0.825 * 0.975, net::kTickMillis), 1e-9);
+               std::max(commonLeafReload * 0.270 * 0.825 * 0.975, net::kTickMillis), 1e-9);
 }
 
 TEST(partial_damage_does_not_break_a_petal) {

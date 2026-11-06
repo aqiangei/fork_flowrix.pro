@@ -593,6 +593,11 @@ constexpr ChangelogEntry kChangelog[] = {
     {"2026年11月6日（生物穿墙修复）",
      {"怪物移动、碰撞挤开与射击后坐力加入墙壁路径检查",
       "修复游走NPC和长身怪物的身体节段可能越过墙壁的问题"}},
+    {"2026年11月7日（天赋与首领平衡）",
+     {"110级起，每10级额外获得1点天赋点，已有角色自动补齐",
+      "增强Reload天赋，Unique级的基础冷却倍率从29.2%降至27%",
+      "水母区可补足海洋第3只Apex，普通水母刷新维持原样",
+      "下水道Garbage从Super晋升Apex的判定概率由20%提高到30%"}},
 };
 
 constexpr int kEntryCount = static_cast<int>(sizeof(kChangelog) / sizeof(kChangelog[0]));

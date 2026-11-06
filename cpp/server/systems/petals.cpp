@@ -189,7 +189,7 @@ std::uint8_t chargesFor(const PetalConfig& config) {
 /// A cooldown of zero is a config that forgot to say how long, not a petal that
 /// returns the instant it breaks.
 ///
-/// `scale` is the Reload talent, which only ever shortens: 29% of the petal's
+/// `scale` is the Reload talent, which only ever shortens: 27% of the petal's
 /// own reload at unique, the top of the branch. Floored at one tick, because a cooldown shorter
 /// than the tick that measures it is no cooldown at all -- the slot would be
 /// ready again on the same frame it broke.
