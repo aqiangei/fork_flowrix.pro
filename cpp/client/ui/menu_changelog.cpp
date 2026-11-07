@@ -598,6 +598,10 @@ constexpr ChangelogEntry kChangelog[] = {
       "增强Reload天赋，Unique级的基础冷却倍率从29.2%降至27%",
       "水母区可补足海洋第3只Apex，普通水母刷新维持原样",
       "下水道Garbage从Super晋升Apex的判定概率由20%提高到30%"}},
+    {"2026年11月7日（皮肤搜索与配装）",
+     {"皮肤浏览支持按皮肤名或作者搜索",
+      "控制设置新增当前配装预设自动保存，可轻点空预设创建",
+      "分裂器的冷却随稀有度缩短，补全绷带、三叶草和电池的数值说明"}},
 };
 
 constexpr int kEntryCount = static_cast<int>(sizeof(kChangelog) / sizeof(kChangelog[0]));

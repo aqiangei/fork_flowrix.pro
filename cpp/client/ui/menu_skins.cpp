@@ -371,9 +371,13 @@ Layout layoutOf(Rect panel) {
     return out;
 }
 
+Rect browseSearch(const Layout& l) {
+    return {l.body.x, l.tabs.bottom() + 7.0, l.body.w, 28.0};
+}
+
 /// The Browse tab has no footer: its cards run to the card's own bottom pad.
 Rect browseBody(const Layout& l) {
-    const double top = l.tabs.bottom() + 30.0;
+    const double top = browseSearch(l).bottom() + 8.0;
     return {l.body.x, top, l.body.w, std::max(0.0, l.panel.bottom() - kPad - top)};
 }
 
@@ -430,6 +434,8 @@ struct Studio {
 
     Scroller shapeScroll;
     Scroller browseScroll;
+    std::string browseQuery;
+    TextFieldState browseField;
 
     bool dragging = false;
     HandleKind dragHandle = HandleKind::Anchor;
@@ -1006,8 +1012,9 @@ void Studio::drawFooter(Canvas& canvas, double timeSeconds) {
 }
 
 void Studio::drawBrowse(Canvas& canvas, const std::string& me) {
-    ui::text(canvas, tr(Msg::SkinBrowseHint), layout.body.x, layout.tabs.bottom() + 16.0,
-             label(kBodySize));
+    inputField(canvas, browseSearch(layout), browseQuery,
+               trEnZh("Search skin name or creator", "搜索皮肤名或作者"),
+               browseField.focused && !confirming, window->timeSeconds(), &browseField);
 
     const Rect view = browseBody(layout);
     const std::vector<CustomSkin>& skins = catalog();
@@ -1028,7 +1035,18 @@ void Studio::drawBrowse(Canvas& canvas, const std::string& me) {
 
     std::vector<const CustomSkin*> sorted;
     sorted.reserve(skins.size());
-    for (const CustomSkin& skin : skins) sorted.push_back(&skin);
+    const std::string query = lowerCase(trimmed(browseQuery));
+    for (const CustomSkin& skin : skins) {
+        if (query.empty() || lowerCase(skin.name).find(query) != std::string::npos ||
+            lowerCase(skin.author).find(query) != std::string::npos)
+            sorted.push_back(&skin);
+    }
+    if (sorted.empty()) {
+        browseScroll = {};
+        ui::text(canvas, trEnZh("No matching skins", "没有匹配的皮肤"), view.x, view.y + 24.0,
+                 label(kBodySize));
+        return;
+    }
     std::stable_sort(sorted.begin(), sorted.end(),
                      [](const CustomSkin* a, const CustomSkin* b) {
                          return a->createdAt > b->createdAt;
@@ -1405,6 +1423,7 @@ bool Studio::dispatch(MenuContext& ctx, const Action& a) {
     // clicking off a DOM input does. The box itself never reaches here: it
     // answers for its own press in trackTextMouse.
     nameField.blur();
+    browseField.blur();
 
     switch (a.k) {
         case Act::Close:
@@ -1532,6 +1551,23 @@ bool Studio::handleInput(MenuContext& ctx) {
     // caret, the way the DOM controls they replace do.
     const bool naming = tab == Tab::Create && !textMode && nameField.focused;
     const bool editing = tab == Tab::Create && textMode;
+    if (tab == Tab::Browse && !confirming) {
+        const Rect field = browseSearch(layout);
+        trackTextMouse(ctx.window, browseField, field,
+                       inputFieldRun(field, browseQuery, browseField), browseQuery, ctx.timeSeconds);
+        if (insideInclusive(field, mouse)) ctx.window.setCursorShape(CursorShape::Text);
+        if (browseField.focused) {
+            ctx.wantsText = true;
+            TextEditOptions options;
+            options.maxBytes = 96;
+            if (editText(ctx.window, browseQuery, browseField, ctx.timeSeconds, options)) {
+                browseScroll.offset = 0;
+                regions.clear();
+            }
+            if (ctx.window.keyPressed(Key::Escape) || ctx.window.keyPressed(Key::Enter))
+                browseField.blur();
+        }
+    }
     if (naming || editing) ctx.wantsText = true;
 
     if (naming) {
@@ -1637,6 +1673,7 @@ void SkinsPanel::reset() {
     // throw away the skin being drawn.
     Studio& state = studio();
     state.nameField.blur();
+    state.browseField.blur();
     state.textField.dragging = false;
     state.dragging = false;
     state.confirming = false;

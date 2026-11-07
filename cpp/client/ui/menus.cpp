@@ -811,6 +811,7 @@ bool ClientSettings::load(const std::string& path) {
         else if (key == "movementHelper") movementHelper = number != 0;
         else if (key == "invertAttack") invertAttack = number != 0;
         else if (key == "invertDefend") invertDefend = number != 0;
+        else if (key == "autoSaveLoadoutPreset") autoSaveLoadoutPreset = number != 0;
         else if (key == "classicLoadout") classicLoadoutBar = number != 0;
         // The key being on disk at all is the choice: an absent one leaves the
         // device to answer, which is what touchControlsWanted does with it.
@@ -869,6 +870,7 @@ bool ClientSettings::save(const std::string& path) const {
          << "movementHelper " << (movementHelper ? 1 : 0) << '\n'
          << "invertAttack " << (invertAttack ? 1 : 0) << '\n'
          << "invertDefend " << (invertDefend ? 1 : 0) << '\n'
+         << "autoSaveLoadoutPreset " << (autoSaveLoadoutPreset ? 1 : 0) << '\n'
          << "classicLoadout " << (classicLoadoutBar ? 1 : 0) << '\n'
          << "tutorialDone " << (tutorialCompleted ? 1 : 0) << '\n'
          << "tutorialStep " << tutorialStep << '\n'
@@ -1731,7 +1733,8 @@ void MenuSystem::drawLoadoutBar(Canvas& canvas, Window& window, NetClient& net,
     if (pendingPreset_ >= 0) {
         const int preset = pendingPreset_;
         pendingPreset_ = -1;
-        if (pendingPresetSave_) {
+        if (pendingPresetSave_ || (settings_.autoSaveLoadoutPreset &&
+                                  net.profile().presets[static_cast<std::size_t>(preset)].empty())) {
             net.saveLoadoutPreset(preset);
         } else {
             // Nothing to show ahead of the server this time: the presets live
@@ -2923,6 +2926,7 @@ MenuSystem::OpCounts MenuSystem::takeOpCounts() {
 void MenuSystem::render(Canvas& canvas, Window& window, NetClient& net, const SpriteCache& sprites,
                         const WorldRenderer& renderer, double timeSeconds, double dt,
                         const OverlayFn& overStripUnderBar) {
+    net.setAutoSaveLoadout(settings_.autoSaveLoadoutPreset);
     wantsText_ = false;
     panelRect_ = Rect{};
     // Taken back every frame and claimed again by whatever still holds the

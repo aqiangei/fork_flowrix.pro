@@ -71,15 +71,12 @@ constexpr const char* kFlowerPetMobId = "glitch_flower";
 /// petals.json means "this petal does not hit things with its body", not "this
 /// petal's shock ignores what tier it is".
 constexpr double kLightningRadius = 1000.0;
-constexpr double kLightningFallbackDamage = 25.0;
 
 /// The battery ships with three discharges and spends one per body slam, no
 /// faster than twice a second. It has no health pool -- petals.json gives it a
 /// null `health`, which is a petal nothing can break -- so running the charges
 /// out is the ONLY thing that ever takes it off the ring, and the slot's
 /// ordinary cooldown is what hands a full one back.
-constexpr std::uint8_t kBatteryCharges = 3;
-constexpr double kBatteryStrikeIntervalMillis = 500.0;
 
 /// How far apart a worn lightning cutter's strikes are: 500 ms, so at most
 /// twice a second. The limiter is per PLAYER rather than per petal, so a second

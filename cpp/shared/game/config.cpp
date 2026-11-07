@@ -1886,6 +1886,8 @@ PetalStats buildPetalStats(const PetalConfig& c, Rarity r) {
         s.reloadMillis = 512000.0 / std::pow(2.0, rarityIndex(tier));
     } else if (c.id == "lightning") {
         s.health = 10.0;
+    } else if (c.id == "splitter") {
+        s.reloadMillis *= std::pow(0.94, ladderIndex(tier));
     } else if (c.id == "bubble" || c.id == "magic_bubble") {
         // The magic bubble is a bubble with a mana price, and it pays the same
         // shortening reload: two petals that pop the same way must not read as

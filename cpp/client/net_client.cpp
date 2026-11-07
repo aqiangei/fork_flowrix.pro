@@ -300,6 +300,7 @@ void NetClient::forgetAccount() {
     // on the lobby's first frame before the server's fresh copy arrived.
     sessionToken_.clear();
     profile_ = Profile{};
+    selectedLoadoutPreset_ = -1;
     chat_.clear();
     chatBackfilled_ = false;
     whisperPartner_.clear();
@@ -408,6 +409,7 @@ void NetClient::setLoadoutSlot(int slot, std::uint16_t petalIndex, Rarity rarity
     w.u16(petalIndex);
     w.u8(static_cast<std::uint8_t>(rarity));
     send(w);
+    if (autoSaveLoadout_) saveLoadoutPreset(selectedLoadoutPreset_);
 }
 
 void NetClient::swapLoadoutSlots(int a, int b) {
@@ -416,16 +418,19 @@ void NetClient::swapLoadoutSlots(int a, int b) {
     w.u8(static_cast<std::uint8_t>(a));
     w.u8(static_cast<std::uint8_t>(b));
     send(w);
+    if (autoSaveLoadout_) saveLoadoutPreset(selectedLoadoutPreset_);
 }
 
 void NetClient::swapLoadoutRows() {
     ByteWriter w;
     beginMessage(w, net::ClientMessage::SwapLoadoutRows);
     send(w);
+    if (autoSaveLoadout_) saveLoadoutPreset(selectedLoadoutPreset_);
 }
 
 void NetClient::saveLoadoutPreset(int preset) {
     if (preset < 0 || preset >= kLoadoutPresetCount) return;
+    selectedLoadoutPreset_ = preset;
     ByteWriter w;
     beginMessage(w, net::ClientMessage::SaveLoadoutPreset);
     w.u8(static_cast<std::uint8_t>(preset));
@@ -434,6 +439,7 @@ void NetClient::saveLoadoutPreset(int preset) {
 
 void NetClient::loadLoadoutPreset(int preset) {
     if (preset < 0 || preset >= kLoadoutPresetCount) return;
+    selectedLoadoutPreset_ = preset;
     ByteWriter w;
     beginMessage(w, net::ClientMessage::LoadLoadoutPreset);
     w.u8(static_cast<std::uint8_t>(preset));

@@ -253,6 +253,7 @@ struct ClientSettings {
     /// Window::setDesynchronized the way renderScale reaches setRenderScale.
     bool desynchronizedCanvas = false;
     bool showChat = true;
+    bool autoSaveLoadoutPreset = false;
     /// Which of the chat box's channel tabs its transcript shows, one bit per
     /// tab in strip order: Local, Global, Squad, Guild, Whisper, Admin. All on
     /// by default. The server's own lines belong to no tab and always show.

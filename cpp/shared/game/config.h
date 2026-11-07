@@ -1095,6 +1095,10 @@ struct MobStats {
 };
 
 /// A petal at one tier.
+inline constexpr int kBatteryCharges = 3;
+inline constexpr double kBatteryStrikeIntervalMillis = 500.0;
+inline constexpr double kLightningFallbackDamage = 25.0;
+
 struct PetalStats {
     double damage = 0;
     double health = 0;

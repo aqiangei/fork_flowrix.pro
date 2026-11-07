@@ -342,6 +342,10 @@ std::vector<TooltipLine> petalTooltipLines(std::uint16_t petalIndex, Rarity rari
         // {0:rarity} is: a champion's crown hands out a Basic of whatever tier
         // the crown is.
         std::string description = petalDescTr(config.id, config.description.c_str());
+        if (config.id == "battery" && language() != Language::Zh) {
+            description = "Discharges lightning when your flower body collides with a mob. "
+                          "Each strike spends a charge. The battery reloads when empty.";
+        }
         static const std::string kRaritySlot = "{rarity}";
         for (std::size_t at = description.find(kRaritySlot); at != std::string::npos;
              at = description.find(kRaritySlot, at)) {
@@ -509,7 +513,8 @@ std::vector<TooltipLine> petalTooltipLines(std::uint16_t petalIndex, Rarity rari
             std::snprintf(buffer, sizeof buffer, "%g", std::round(millis / 10.0) / 100.0);
             return std::string(buffer) + "s";
         };
-        TooltipLine undead{"Undead: " + seconds(stats.undeadMillis), 12.0};
+        TooltipLine undead{std::string(trEnZh("Undead duration: ", "不死持续：")) +
+                                seconds(stats.undeadMillis), 12.0};
         undead.alpha = 0.56;
         undead.labelColor = kStatUndead;
         lines.push_back(undead);
@@ -519,10 +524,25 @@ std::vector<TooltipLine> petalTooltipLines(std::uint16_t petalIndex, Rarity rari
         body.alpha = 0.56;
         body.labelColor = kStatDamage;
         lines.push_back(body);
-        TooltipLine lock{"Unrevivable: " + seconds(stats.unrevivableMillis), 12.0};
+        TooltipLine lock{std::string(trEnZh("Revival blocked: ", "禁止复活：")) +
+                              seconds(stats.unrevivableMillis), 12.0};
         lock.alpha = 0.56;
         lock.labelColor = kStatDanger;
         lines.push_back(lock);
+    }
+    if (config.id == "clover" && stats.modifiers.luck > 0.0) {
+        lines.push_back({std::string(trEnZh("Luck: +", "幸运值：+")) +
+                         exactNumber(stats.modifiers.luck), 12.0});
+    }
+    if (config.id == "battery") {
+        const double strike = (stats.damage > 0.0 ? stats.damage :
+            kLightningFallbackDamage * petalStrengthScale(rarity)) * skills.effectScale(SkillId::Damage);
+        lines.push_back({std::string(trEnZh("Lightning damage: ", "闪电伤害：")) +
+                         abbreviate(strike), 12.0});
+        lines.push_back({std::string(trEnZh("Charges: ", "充能次数：")) +
+                         std::to_string(kBatteryCharges), 12.0});
+        lines.push_back({std::string(trEnZh("Minimum discharge interval: ", "放电间隔至少：")) +
+                         reloadSeconds(kBatteryStrikeIntervalMillis), 12.0});
     }
 
     // Bur alone. Its description says the petal debuffs armour and cannot say

@@ -147,6 +147,7 @@ enum Toggle : int {
     kMovementHelper,
     kInvertAttack,
     kInvertDefend,
+    kAutoSaveLoadoutPreset,
     kHideOtherPetals,
     kHideOtherPets,
     kDesynchronizedCanvas,
@@ -257,6 +258,7 @@ bool* toggleValue(PanelState& st, ClientSettings& settings, int id) {
         case kMovementHelper: return &settings.movementHelper;
         case kInvertAttack: return &settings.invertAttack;
         case kInvertDefend: return &settings.invertDefend;
+        case kAutoSaveLoadoutPreset: return &settings.autoSaveLoadoutPreset;
         case kHideOtherPetals: return &settings.render.hideOtherPetals;
         case kHideOtherPets: return &settings.render.hideOtherPets;
         case kScreenShake: return &settings.render.screenShake;
@@ -668,6 +670,8 @@ bool SettingsPanel::render(MenuContext& ctx) {
             p.checkbox(kMovementHelper, tr(Msg::MovementHelper));
             p.checkbox(kInvertAttack, tr(Msg::InvertAttack));
             p.checkbox(kInvertDefend, tr(Msg::InvertDefend));
+            p.checkbox(kAutoSaveLoadoutPreset,
+                       trEnZh("Auto-save selected loadout preset", "自动保存当前配装预设"));
             break;
         }
 

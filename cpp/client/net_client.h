@@ -631,6 +631,7 @@ public:
     /// stores the whole loadout on the account; loading re-equips it, and the
     /// server answers both with a Notice.
     void saveLoadoutPreset(int preset);
+    void setAutoSaveLoadout(bool enabled) { autoSaveLoadout_ = enabled; }
     void loadLoadoutPreset(int preset);
     /// Clicks the petal in an active loadout slot.
     ///
@@ -1150,6 +1151,8 @@ private:
     bool teleported_ = false;
     Profile profile_;
     std::string sessionToken_;
+    bool autoSaveLoadout_ = false;
+    int selectedLoadoutPreset_ = -1;
     std::vector<ChatLine> chat_;
     std::uint64_t chatSeq_ = 0;
     /// Set once this account's backlog is in the transcript. Every
