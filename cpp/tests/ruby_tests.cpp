@@ -1,5 +1,6 @@
 #include "test.h"
 #include "test_data.h"
+#include "server/replication.h"
 #include "server/systems/combat.h"
 #include "server/systems/loot.h"
 #include "shared/core/world.h"
@@ -75,6 +76,28 @@ TEST(ruby_common_repeat_probability_is_high_but_not_guaranteed) {
     }
     CHECK(repeats > 730);
     CHECK(repeats < 870);
+}
+
+TEST(ruby_repeats_lightning_on_the_training_dummy) {
+    RubyArena arena;
+    arena.world.remove<MobTag>(arena.mob);
+    arena.world.add<NpcTag>(arena.mob);
+    arena.world.add<Npc>(arena.mob).cutterPassable = true;
+    arena.world.add<NetId>(arena.mob, NetId{7});
+    auto& mods = arena.world.get<PlayerModifiers>(arena.player);
+    mods.lightningRepeatChance = 1;
+    mods.maxLightningRepeats = 4;
+    EventQueue events;
+    arena.combat.beginTick(arena.world, 1000, 1.0 / 30.0, events);
+    CHECK_NEAR(arena.hit().applied, 50, 1e-9);
+    CHECK_EQ(events.events().size(), std::size_t(5));
+    for (const WireEvent& event : events.events()) {
+        CHECK(event.kind == net::EventKind::Damage);
+        CHECK_EQ(event.dealtBy, arena.player);
+        CHECK_NEAR(event.amount, 10, 1e-9);
+    }
+    arena.world.get<Npc>(arena.mob).cutterPassable = false;
+    CHECK_NEAR(arena.hit().applied, 10, 1e-9);
 }
 
 TEST(ruby_rarity_stats_and_fixed_and_random_drops_are_available) {

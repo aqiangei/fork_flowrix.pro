@@ -47,11 +47,6 @@ constexpr int kApexPetCount = 3;
 /// until the proxy answered 502.
 constexpr int kMaxPetEntitiesPerPlayer = 30;
 
-/// The flower petal cracks on the mob it touches: nineteen breaks in twenty
-/// open onto a squad of glitch flowers, and the twentieth takes the flower
-/// that was carrying it.
-constexpr double kFlowerCorruptChance = 0.05;
-constexpr int kFlowerPetCount = 3;
 constexpr const char* kFlowerPetMobId = "glitch_flower";
 
 // -- scripted behaviours -----------------------------------------------------
@@ -62,38 +57,10 @@ constexpr const char* kFlowerPetMobId = "glitch_flower";
 // they do is code and not a number, and because each of them fires at a
 // different moment in a petal's life.
 
-/// A strike reaches this far and, when the petal declares no damage of its own,
-/// lands this much AT COMMON.
-///
-/// The fallback is a base, not a figure: it goes up the same 3x-per-tier petal
-/// ladder `stats.damage` does (see petalStatScale). A flat one is how an apex
-/// battery ended up striking for a common battery's number -- `damage: 0` in
-/// petals.json means "this petal does not hit things with its body", not "this
-/// petal's shock ignores what tier it is".
-constexpr double kLightningRadius = 1000.0;
-
-/// The battery ships with three discharges and spends one per body slam, no
-/// faster than twice a second. It has no health pool -- petals.json gives it a
-/// null `health`, which is a petal nothing can break -- so running the charges
-/// out is the ONLY thing that ever takes it off the ring, and the slot's
-/// ordinary cooldown is what hands a full one back.
-
 /// How far apart a worn lightning cutter's strikes are: 500 ms, so at most
 /// twice a second. The limiter is per PLAYER rather than per petal, so a second
 /// blade shares the first one's cadence instead of doubling the strike rate.
 constexpr double kLightningCutterIntervalMillis = 500.0;
-
-/// The capacitor banks one point of shock per millisecond it spends against a
-/// mob, holds no more than 60, and throws all of it as one strike the moment
-/// the contact ends. A full second of unbroken contact discharges it too:
-/// without that, a capacitor that never LEAVES -- one latched onto a mob by
-/// attraction, one parked inside a boss -- would bank forever and never fire.
-///
-/// Common figures. The strike goes up the same 3x petal ladder a lightning
-/// petal's does, so an apex capacitor charges at 3^n points a millisecond.
-constexpr double kCapacitorChargePerMillis = 1.0;
-constexpr double kCapacitorMaxCharge = 60.0;
-constexpr double kCapacitorWindowMillis = 1000.0;
 
 /// An explosion reaches three times the petal's DRAWN size, and the reference
 /// arrives at that by multiplying by 40 twice -- once turning the size stat
@@ -3171,6 +3138,13 @@ void PetalSystem::dischargeCapacitors(World& world, const ContentRegistry& regis
     }
     if (capacitorList_.empty()) return;
 
+    const PlayerModifiers* modifiers = world.tryGet<PlayerModifiers>(player);
+    const Transform* flower = world.tryGet<Transform>(player);
+    const Body* flowerBody = world.tryGet<Body>(player);
+    const bool cutterContact = modifiers && modifiers->passThroughMobs && flower && flowerBody &&
+                               touchesGridMob(world, player, flower->realm, flower->position,
+                                              flowerBody->radius);
+
     for (const Entity petal : capacitorList_) {
         PetalInstance* instance = world.tryGet<PetalInstance>(petal);
         const Transform* transform = world.tryGet<Transform>(petal);
@@ -3179,11 +3153,10 @@ void PetalSystem::dischargeCapacitors(World& world, const ContentRegistry& regis
         const PetalStats stats = registry.petalStats(instance->configIndex, rarity);
         const Vec2 at = transform->position;
 
-        const bool touching = touchesGridMob(world, transform->realm, at, stats.radius);
+        const bool touching = cutterContact ||
+                              touchesGridMob(world, player, transform->realm, at, stats.radius);
         if (touching) instance->contactMillis += dt * 1000.0;
-        // Thirty ticks of 1000/30 ms can sum to a hair under a second in
-        // floating point, so the window closes with a tolerance rather than
-        // running a tick long.
+        // Use a tolerance so floating-point tick sums don't delay the strike.
         const bool windowOver = instance->contactMillis >= kCapacitorWindowMillis - 1e-6;
         if (instance->contactMillis <= 0.0 || (touching && !windowOver)) continue;
 
@@ -3197,7 +3170,7 @@ void PetalSystem::dischargeCapacitors(World& world, const ContentRegistry& regis
     }
 }
 
-bool PetalSystem::touchesGridMob(World& world, Realm realm, Vec2 at, double radius) {
+bool PetalSystem::touchesGridMob(World& world, Entity player, Realm realm, Vec2 at, double radius) {
     // The attraction grid rather than touchesMob's linear sweep: a capacitor
     // asks every tick for as long as it is on the ring, not once per life. The
     // grid was filed at the top of this tick, after movement, so it is where
@@ -3210,8 +3183,7 @@ bool PetalSystem::touchesGridMob(World& world, Realm realm, Vec2 at, double radi
         if (transform == nullptr || body == nullptr) continue;
         const double reach = radius + body->radius;
         const double gap = distanceSq(transform->position, at);
-        // touchesMob's rule exactly, degenerate centre-on-centre case included.
-        if (gap < reach * reach && gap > 0.0) return true;
+        if (gap < reach * reach && CombatSystem::canDamage(world, player, mob)) return true;
     }
     return false;
 }

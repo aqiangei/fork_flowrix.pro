@@ -345,6 +345,18 @@ std::vector<TooltipLine> petalTooltipLines(std::uint16_t petalIndex, Rarity rari
         if (config.id == "battery" && language() != Language::Zh) {
             description = "Discharges lightning when your flower body collides with a mob. "
                           "Each strike spends a charge. The battery reloads when empty.";
+        } else if (config.id == "flower") {
+            description = trEnZh(
+                "Breaks on contact with a mob. It summons Glitch Flowers at the point of impact "
+                "or corrupts your flower, enabling PvP anywhere. Apex summons Eternal pets.",
+                "碰到怪物时破裂，在碰撞处召唤故障花，或使自己的花朵故障并进入可交战状态。"
+                "Apex 花瓣召唤永恒故障花。");
+        } else if (config.id == "capacitor") {
+            description = trEnZh(
+                "Charges while touching an enemy. Discharges when contact ends or the timer fills. "
+                "With Cutter equipped, overlapping an enemy with your flower body also charges it.",
+                "碰到敌人时充电，离开敌人或达到持续接触时长时放电。"
+                "装备 Cutter 后，花朵身体与敌人重叠也能充电。");
         }
         static const std::string kRaritySlot = "{rarity}";
         for (std::size_t at = description.find(kRaritySlot); at != std::string::npos;
@@ -543,6 +555,23 @@ std::vector<TooltipLine> petalTooltipLines(std::uint16_t petalIndex, Rarity rari
                          std::to_string(kBatteryCharges), 12.0});
         lines.push_back({std::string(trEnZh("Minimum discharge interval: ", "放电间隔至少：")) +
                          reloadSeconds(kBatteryStrikeIntervalMillis), 12.0});
+    }
+    if (config.id == "flower") {
+        lines.push_back({std::string(trEnZh("Summons: ", "召唤数量：")) +
+                         std::to_string(kFlowerPetCount), 12.0});
+        lines.push_back({std::string(trEnZh("Corruption chance: ", "故障概率：")) +
+                         percentNumber(kFlowerCorruptChance) + "%", 12.0});
+    }
+    if (config.id == "capacitor") {
+        const double chargeScale = petalStrengthScale(rarity) * skills.effectScale(SkillId::Damage);
+        lines.push_back({std::string(trEnZh("Charge per millisecond: ", "每毫秒蓄积伤害：")) +
+                         abbreviate(kCapacitorChargePerMillis * chargeScale), 12.0});
+        lines.push_back({std::string(trEnZh("Max damage per hit: ", "单次闪电伤害上限：")) +
+                         abbreviate(kCapacitorMaxCharge * chargeScale), 12.0});
+        lines.push_back({std::string(trEnZh("Discharge interval on contact: ", "持续接触放电间隔：")) +
+                         reloadSeconds(kCapacitorWindowMillis), 12.0});
+        lines.push_back({std::string(trEnZh("Lightning radius: ", "放电半径：")) +
+                         exactNumber(kLightningRadius), 12.0});
     }
 
     // Bur alone. Its description says the petal debuffs armour and cannot say

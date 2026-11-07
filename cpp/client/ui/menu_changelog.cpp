@@ -602,6 +602,11 @@ constexpr ChangelogEntry kChangelog[] = {
      {"皮肤浏览支持按皮肤名或作者搜索",
       "控制设置新增当前配装预设自动保存，可轻点空预设创建",
       "分裂器的冷却随稀有度缩短，补全绷带、三叶草和电池的数值说明"}},
+    {"2026年11月7日（测伤与合成）",
+     {"修复训练木桩漏算 Ruby 的闪电连击",
+      "电容器提高伤害上限，装备 Cutter 时花朵贴住敌人也能充电",
+      "补全花朵与电容器的机制和数值说明",
+      "提高普通合成的基础成功率，Common 升 Uncommon 从 64% 提至 72%"}},
 };
 
 constexpr int kEntryCount = static_cast<int>(sizeof(kChangelog) / sizeof(kChangelog[0]));

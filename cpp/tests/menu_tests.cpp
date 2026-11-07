@@ -849,7 +849,7 @@ TEST(a_full_stack_crafts_whole_in_one_request) {
     const CraftOutcome outcome = client.craftOutcome();
     client.craftOutcome().pending = false;
 
-    // 64% odds on ~430 million attempts lands about 335 million; anything
+    // 72% odds on ~430 million attempts lands about 309 million; anything
     // like that proves the whole pool was crafted, and past 65,535 proves the
     // count survived the wire both ways.
     CHECK(outcome.success);

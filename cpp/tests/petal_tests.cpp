@@ -952,7 +952,7 @@ TEST(a_defend_only_petal_is_never_attracted) {
 // Lightning
 // ---------------------------------------------------------------------------
 
-/// PetalSystem's own kLightningRadius, which is private to it. Spelling the
+/// PetalSystem's lightning radius. Spelling the
 /// number out here is deliberate: a test that hard-codes it is what notices the
 /// reach changing under a strike that is supposed to cover a screen.
 constexpr double kStrikeRadius = 1000.0;
@@ -1325,11 +1325,10 @@ TEST(a_strike_into_a_pile_keeps_the_nearest_bolts) {
 // The battery
 // ---------------------------------------------------------------------------
 
-/// PetalSystem's own kBatteryCharges and kBatteryStrikeIntervalMillis, which
-/// are private to it. Spelt out here for the reason kStrikeRadius is: a test
+/// Expected battery figures, spelt out for the reason kStrikeRadius is: a test
 /// that hard-codes them is what notices a battery quietly growing a fourth
 /// charge or losing its pacing.
-constexpr int kBatteryCharges = 3;
+constexpr int kExpectedBatteryCharges = 3;
 constexpr double kBatteryIntervalMillis = 500.0;
 
 std::size_t countStrikes(const Rig& rig) {
@@ -1369,18 +1368,18 @@ TEST(a_battery_arrives_with_three_charges_and_spends_one_per_slam) {
     Rig rig;
     rig.equip(0, "battery");
     rig.settleEquips();
-    CHECK_EQ(batteryCharges(rig), kBatteryCharges);
+    CHECK_EQ(batteryCharges(rig), kExpectedBatteryCharges);
 
     // Nothing to ram: the charges are not a timer and must not tick away on
     // an empty field.
     rig.tick(40);
     CHECK_EQ(countStrikes(rig), std::size_t(0));
-    CHECK_EQ(batteryCharges(rig), kBatteryCharges);
+    CHECK_EQ(batteryCharges(rig), kExpectedBatteryCharges);
 
     ramMob(rig);
     rig.tick();
     CHECK_EQ(countStrikes(rig), std::size_t(1));
-    CHECK_EQ(batteryCharges(rig), kBatteryCharges - 1);
+    CHECK_EQ(batteryCharges(rig), kExpectedBatteryCharges - 1);
 }
 
 TEST(a_battery_paces_its_strikes_half_a_second_apart) {
@@ -1410,7 +1409,7 @@ TEST(a_battery_reloads_once_its_third_charge_is_gone) {
 
     // Three strikes, and the petal is off the ring: it has no health pool, so
     // spending the last charge is the only thing that can ever retire it.
-    CHECK(rig.tickUntil([&] { return countStrikes(rig) >= std::size_t(kBatteryCharges); }, 120));
+    CHECK(rig.tickUntil([&] { return countStrikes(rig) >= std::size_t(kExpectedBatteryCharges); }, 120));
     CHECK(rig.tickUntil([&] { return liveBattery(rig) == NULL_ENTITY; }, 5));
     CHECK(rig.slot(0).broken);
 
@@ -1426,7 +1425,7 @@ TEST(a_battery_reloads_once_its_third_charge_is_gone) {
     rig.world.destroy(mob);
     CHECK(rig.tickUntil([&] { return !rig.slot(0).broken && liveBattery(rig) != NULL_ENTITY; },
                         200));
-    CHECK_EQ(batteryCharges(rig), kBatteryCharges);
+    CHECK_EQ(batteryCharges(rig), kExpectedBatteryCharges);
 
     // And it is a working one.
     ramMob(rig);
@@ -1524,20 +1523,14 @@ TEST(a_battery_ignores_a_mob_that_only_touches_the_ring) {
     addMob(rig, orbit);
     rig.tick(40);
     CHECK_EQ(countStrikes(rig), std::size_t(0));
-    CHECK_EQ(batteryCharges(rig), kBatteryCharges);
+    CHECK_EQ(batteryCharges(rig), kExpectedBatteryCharges);
 }
 
 // ---------------------------------------------------------------------------
 // The capacitor
 // ---------------------------------------------------------------------------
 
-/// PetalSystem's own capacitor figures, private to it and spelt out here for
-/// the reason the battery's are.
-constexpr double kCapacitorMaxCharge = 60.0;
-constexpr double kCapacitorWindowMillis = 1000.0;
-
-/// A capacitor on a frozen ring, with a mob sitting on it. Off its centre by a
-/// few units, which touchesMob would otherwise read as a degenerate overlap.
+/// A capacitor on a frozen ring, with a mob sitting on it.
 Entity touchCapacitor(Rig& rig, Rarity rarity = Rarity::Common) {
     rig.equip(0, "capacitor", rarity);
     rig.freezeRing();
@@ -1596,7 +1589,7 @@ TEST(a_capacitor_holds_no_more_than_its_cap) {
     CHECK_NEAR(lastStrikeDamage(rig), kCapacitorMaxCharge, 1e-6);
 }
 
-TEST(a_capacitor_that_never_leaves_discharges_every_second) {
+TEST(a_capacitor_that_never_leaves_discharges_periodically) {
     if (!contentLoaded()) return;
     Rig rig;
     touchCapacitor(rig);
@@ -1612,6 +1605,21 @@ TEST(a_capacitor_that_never_leaves_discharges_every_second) {
     const double first = rig.now;
     CHECK(rig.tickUntil([&] { return countStrikes(rig) > 1; }, 60));
     CHECK_NEAR(rig.now - first, kCapacitorWindowMillis, 1e-6);
+}
+
+TEST(a_capacitor_charges_from_cutter_body_overlap) {
+    if (!contentLoaded()) return;
+    Rig rig;
+    rig.equip(0, "capacitor");
+    rig.freezeRing();
+    rig.settleEquips();
+    rig.settleRing();
+    addMob(rig, rig.position(rig.player));
+    CHECK(!rig.tickUntil([&] { return countStrikes(rig) > 0; }, 30));
+
+    rig.equip(1, "cutter");
+    CHECK(rig.tickUntil([&] { return countStrikes(rig) > 0; }, 60));
+    CHECK_NEAR(lastStrikeDamage(rig), kCapacitorMaxCharge, 1e-6);
 }
 
 TEST(a_capacitor_climbs_the_rarity_ladder_like_lightning) {

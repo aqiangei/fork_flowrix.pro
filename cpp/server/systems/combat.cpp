@@ -588,8 +588,14 @@ bool CombatSystem::canHit(const World& world, Entity victim, Entity source, doub
 DamageResult CombatSystem::applyDamage(World& world, Entity victim, Entity source,
                                        double amount, double nowMillis, DamageKind kind) {
     if (kind != DamageKind::Lightning || resolvingRuby_ || amount <= 0.0 ||
-        !world.has<MobTag>(victim) || world.has<Pet>(victim)) {
+        world.has<Pet>(victim)) {
         return applyDamageOnce(world, victim, source, amount, nowMillis, kind);
+    }
+    if (!world.has<MobTag>(victim)) {
+        const Npc* npc = world.tryGet<Npc>(victim);
+        if (npc == nullptr || !npc->cutterPassable) {
+            return applyDamageOnce(world, victim, source, amount, nowMillis, kind);
+        }
     }
     const Entity dealer = creditedPlayer(world, source);
     const PlayerModifiers* modifiers = world.tryGet<PlayerModifiers>(dealer);

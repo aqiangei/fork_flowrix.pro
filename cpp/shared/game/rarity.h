@@ -341,11 +341,14 @@ inline double petalEvasionScale(double authored, Rarity r) {
 // Crafting and drop rolls
 // ---------------------------------------------------------------------------
 
-/// Probability that a craft from `from` to the next tier succeeds. Halves each
-/// tier from a base of 64%, so common->uncommon is routine and the top tiers
-/// are a genuine gamble.
-inline double craftSuccessChance(Rarity from) {
+/// Original rarity ladder retained by loot promotion and downgrade rolls.
+inline double lootRarityChance(Rarity from) {
     return 0.64 / std::pow(2.0, rarityIndex(from));
+}
+
+/// Forge success starts at 72% and halves with each tier.
+inline double craftSuccessChance(Rarity from) {
+    return 0.72 / std::pow(2.0, rarityIndex(from));
 }
 
 /// Whether anything -- the forge or the oracle -- crafts out of this tier.
@@ -389,7 +392,7 @@ inline constexpr int oracleCraftCost(Rarity from) {
 /// are never promoted; they are flat chaff two tiers down.
 inline double dropUpgradeChance(Rarity mobRarity) {
     if (rarityIndex(mobRarity) >= kLadderRarityCount - 1) return 0.0;
-    return craftSuccessChance(mobRarity) / 3.0;
+    return lootRarityChance(mobRarity) / 3.0;
 }
 
 /// What a mob's tier multiplies dropUpgradeChance by: 5x from rare to mythic,
@@ -411,11 +414,9 @@ inline double dropUpgradeMultiplier(Rarity mobRarity) {
 inline double dropDowngradeChance(Rarity mobRarity) {
     const int i = rarityIndex(mobRarity);
     if (i <= 0) return 0.0;
-    // The TypeScript formula uses the crafting ladder as a percentage (64,
-    // 32, ...), then uses the result as a probability. craftSuccessChance()
-    // is stored as a fraction for actual crafting, so restore that scale here.
+    // The original formula uses the ladder as a percentage (64, 32, ...).
     return 1.0 /
-           (1.0 + craftSuccessChance(static_cast<Rarity>(i - 1)) * 100.0);
+           (1.0 + lootRarityChance(static_cast<Rarity>(i - 1)) * 100.0);
 }
 
 /// How much of a slow lands on a mob: full at equal rarity, a third per tier

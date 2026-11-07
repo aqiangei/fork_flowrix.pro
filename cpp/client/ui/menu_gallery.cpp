@@ -319,11 +319,6 @@ const std::vector<DropDef>& mobDropTable(std::uint16_t mobIndex) {
     return mobIndex < tables.size() ? tables[mobIndex] : kNone;
 }
 
-/// Crafting success at a tier, as a PERCENTAGE. The shared
-/// `craftSuccessChance` is the same ladder expressed as a fraction; the drop
-/// arithmetic below mixes it with literal 100s and needs this scale.
-double craftPercent(int tier) { return 64.0 / std::pow(2.0, tier); }
-
 /// The tier's column in the drop table, or -1 for a rarity items never take.
 int dropTier(Rarity r) {
     const int i = rarityIndex(r);
@@ -332,12 +327,12 @@ int dropTier(Rarity r) {
 
 double upgradePercent(Rarity r) {
     const int i = dropTier(r);
-    return (i < 0 || i >= kDropTiers - 1) ? 0.0 : craftPercent(i) / 3.0;
+    return (i < 0 || i >= kDropTiers - 1) ? 0.0 : dropUpgradeChance(r) * 100.0;
 }
 
 double downgradePercent(Rarity r) {
     const int i = dropTier(r);
-    return i <= 0 ? 0.0 : 100.0 / (1.0 + craftPercent(i - 1));
+    return i <= 0 ? 0.0 : dropDowngradeChance(r) * 100.0;
 }
 
 Rarity tierAbove(Rarity r) {

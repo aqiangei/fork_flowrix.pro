@@ -1094,11 +1094,17 @@ struct MobStats {
     bool spawnable() const { return ambient; }
 };
 
-/// A petal at one tier.
 inline constexpr int kBatteryCharges = 3;
 inline constexpr double kBatteryStrikeIntervalMillis = 500.0;
 inline constexpr double kLightningFallbackDamage = 25.0;
+inline constexpr double kLightningRadius = 1000.0;
+inline constexpr double kCapacitorChargePerMillis = 1.0;
+inline constexpr double kCapacitorMaxCharge = 80.0;
+inline constexpr double kCapacitorWindowMillis = 900.0;
+inline constexpr double kFlowerCorruptChance = 0.05;
+inline constexpr int kFlowerPetCount = 3;
 
+/// A petal at one tier.
 struct PetalStats {
     double damage = 0;
     double health = 0;

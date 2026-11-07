@@ -493,7 +493,7 @@ private:
     bool touchesMob(World& world, Realm realm, Vec2 at, double radius);
     /// touchesMob asked of the attraction grid instead of the whole world, for
     /// a petal that asks every tick rather than until its first contact.
-    bool touchesGridMob(World& world, Realm realm, Vec2 at, double radius);
+    bool touchesGridMob(World& world, Entity player, Realm realm, Vec2 at, double radius);
     /// Where a compass at `at` points: the nearest magnet its flower wears,
     /// or else the highest-tier wild mob in its realm (the nearest of those),
     /// with florr's needle wobble on top. `fallback`, its place on the ring,

@@ -486,12 +486,15 @@ TEST(craft_and_drop_odds_stay_in_range) {
     for (int i = 0; i < kRarityCount; ++i) {
         const Rarity r = static_cast<Rarity>(i);
         const double craft = craftSuccessChance(r);
-        CHECK(craft > 0.0 && craft <= 0.64);
+        CHECK(craft > 0.0 && craft <= 0.72);
         const double up = dropUpgradeChance(r);
         CHECK(up >= 0.0 && up < 1.0);
         const double down = dropDowngradeChance(r);
         CHECK(down >= 0.0 && down < 1.0);
     }
+    CHECK_NEAR(craftSuccessChance(Rarity::Common), 0.72, 1e-12);
+    CHECK_NEAR(craftSuccessChance(Rarity::Unique), 0.0028125, 1e-12);
+    CHECK_NEAR(dropUpgradeChance(Rarity::Common), 0.64 / 3.0, 1e-12);
     CHECK_NEAR(dropUpgradeChance(Rarity::Apex), 0.0, 1e-12);
     CHECK_NEAR(dropDowngradeChance(Rarity::Common), 0.0, 1e-12);
     CHECK_NEAR(dropDowngradeChance(Rarity::Uncommon), 1.0 / 65.0, 1e-12);
