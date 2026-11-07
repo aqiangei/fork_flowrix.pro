@@ -1568,8 +1568,12 @@ TEST(a_capacitor_discharges_what_it_banked_when_contact_ends) {
     pullAway(rig, mob);
     rig.tick();
     CHECK_EQ(countStrikes(rig), std::size_t(1));
-    // One point per millisecond: one tick against the mob, under the cap.
-    CHECK_NEAR(lastStrikeDamage(rig), net::kTickMillis, 1e-6);
+    // One tick against the mob, under the cap.
+    const double charge = net::kTickMillis * kCapacitorChargePerMillis;
+    CHECK_NEAR(lastStrikeDamage(rig), charge, 1e-6);
+    CombatSystem combat;
+    ricochetCombatTick(rig, combat);
+    CHECK_NEAR(rig.healthOf(mob), 10000.0 - charge, 1e-6);
 
     // Spent: stepping clear again throws nothing more.
     rig.tick(40);
@@ -1632,6 +1636,64 @@ TEST(a_capacitor_climbs_the_rarity_ladder_like_lightning) {
     CHECK_EQ(countStrikes(rig), std::size_t(1));
     CHECK_NEAR(lastStrikeDamage(rig), kCapacitorMaxCharge * petalStatScale(Rarity::Legendary),
                1e-6);
+}
+
+TEST(lightning_triggers_only_the_strongest_capacitor_on_one_target) {
+    if (!contentLoaded()) return;
+    Rig rig;
+    rig.equip(0, "lightning");
+    rig.equip(1, "capacitor");
+    rig.equip(2, "capacitor", Rarity::Uncommon);
+    rig.freezeRing();
+    rig.settleEquips();
+    rig.settleRing();
+    const Vec2 orbit = rig.position(rig.petals(0).front());
+    const Entity nearest = addMob(rig, {orbit.x + 2.0, orbit.y});
+    const Entity farther = addMob(rig, {orbit.x + 500.0, orbit.y});
+    CHECK(rig.tickUntil([&] { return countStrikes(rig) == 1; }, 60));
+
+    // Resolve the real Lightning petal's field with two live targets and no
+    // direct ring hits, so only the original strike and follow-up count here.
+    const auto& content = fixture().registry;
+    SpatialGrid grid;
+    for (const Entity mob : {nearest, farther}) {
+        grid.insert(mob, Realm::Overworld, rig.position(mob), rig.world.get<Body>(mob).radius);
+    }
+    CombatSystem combat;
+    combat.beginTick(rig.world, rig.now, net::kTickSeconds, rig.events);
+    combat.runWorldPhase(rig.world, grid, content, rig.now, net::kTickSeconds);
+    const double lightningDamage = content.petalStats(petalId("lightning"), Rarity::Common).damage;
+    const double followUp = kCapacitorSynergyDamage * petalStrengthScale(Rarity::Uncommon);
+    CHECK_NEAR(rig.healthOf(nearest), 10000.0 - lightningDamage - followUp, 1e-6);
+    CHECK_NEAR(rig.healthOf(farther), 10000.0 - lightningDamage, 1e-6);
+    CHECK_EQ(countStrikes(rig), std::size_t(2));
+
+    // A second valid Lightning strike within the shared cooldown only deals
+    // its own damage. Keep it independent of the ring's reload.
+    const auto resolveBurst = [&](bool fromLightningPetal, double delayMillis) {
+        const Entity burst = rig.world.create();
+        rig.world.add<Transform>(burst, Transform{orbit});
+        rig.world.add<GroundEffect>(
+            burst, GroundEffect{GroundEffectKind::Poison, rig.player, kLightningRadius,
+                                0.0, 1.0, Rarity::Common, lightningDamage, 0.0});
+        rig.world.add<LightningBurst>(burst, LightningBurst{fromLightningPetal});
+        rig.world.add<Lifetime>(burst, Lifetime{net::kTickSeconds * 1.5});
+        const double nowMillis = rig.now + delayMillis;
+        combat.beginTick(rig.world, nowMillis, net::kTickSeconds, rig.events);
+        combat.runWorldPhase(rig.world, grid, content, nowMillis, net::kTickSeconds);
+    };
+    resolveBurst(true, net::kTickMillis);
+    CHECK_NEAR(rig.healthOf(nearest), 10000.0 - 2 * lightningDamage - followUp, 1e-6);
+    CHECK_NEAR(rig.healthOf(farther), 10000.0 - 2 * lightningDamage, 1e-6);
+    CHECK_EQ(countStrikes(rig), std::size_t(2));
+
+    // Other electrical bursts cannot trigger the combo even once ready.
+    resolveBurst(false, kCapacitorSynergyCooldownMillis);
+    CHECK_NEAR(rig.healthOf(nearest), 10000.0 - 3 * lightningDamage - followUp, 1e-6);
+    CHECK_EQ(countStrikes(rig), std::size_t(2));
+    resolveBurst(true, kCapacitorSynergyCooldownMillis + net::kTickMillis);
+    CHECK_NEAR(rig.healthOf(nearest), 10000.0 - 4 * lightningDamage - 2 * followUp, 1e-6);
+    CHECK_EQ(countStrikes(rig), std::size_t(3));
 }
 
 // ---------------------------------------------------------------------------

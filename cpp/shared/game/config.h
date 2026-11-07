@@ -1098,9 +1098,11 @@ inline constexpr int kBatteryCharges = 3;
 inline constexpr double kBatteryStrikeIntervalMillis = 500.0;
 inline constexpr double kLightningFallbackDamage = 25.0;
 inline constexpr double kLightningRadius = 1000.0;
-inline constexpr double kCapacitorChargePerMillis = 1.0;
+inline constexpr double kCapacitorChargePerMillis = 1.5;
 inline constexpr double kCapacitorMaxCharge = 80.0;
 inline constexpr double kCapacitorWindowMillis = 900.0;
+inline constexpr double kCapacitorSynergyDamage = 60.0;
+inline constexpr double kCapacitorSynergyCooldownMillis = 900.0;
 inline constexpr double kFlowerCorruptChance = 0.05;
 inline constexpr int kFlowerPetCount = 3;
 

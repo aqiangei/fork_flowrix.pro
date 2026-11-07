@@ -2724,7 +2724,7 @@ void PetalSystem::runBehaviour(World& world, Entity player, Entity petal,
         case PetalBehaviourKind::Lightning:
             // Parked at spawn, so only a contact or a break strikes.
             if (trigger == PetalTrigger::Spawn || trigger == PetalTrigger::Interval) return;
-            strikeLightning(world, player, at, stats.damage, rarity);
+            strikeLightning(world, player, at, stats.damage, rarity, true);
             return;
 
         case PetalBehaviourKind::BloodLeaf: {
@@ -2784,9 +2784,9 @@ void PetalSystem::runBehaviour(World& world, Entity player, Entity petal,
     }
 }
 
-void PetalSystem::emitDamageBurst(World& world, Entity player, Vec2 at, double radius,
-                                  double damage, bool lightning) {
-    if (radius <= 0.0 || damage <= 0.0) return;
+Entity PetalSystem::emitDamageBurst(World& world, Entity player, Vec2 at, double radius,
+                                    double damage) {
+    if (radius <= 0.0 || damage <= 0.0) return NULL_ENTITY;
     // An instantaneous area hit, expressed as a damage field that lives for a
     // single tick.
     //
@@ -2812,14 +2812,11 @@ void PetalSystem::emitDamageBurst(World& world, Entity player, Vec2 at, double r
     world.add<GroundEffect>(burst, GroundEffect{GroundEffectKind::Poison, player, radius, 0.0,
                                                 1.0, Rarity::Common, damage, 0.0});
     world.add<Lifetime>(burst, Lifetime{net::kTickSeconds * 1.5});
-    // Nothing about the field changes -- same reach rule, same rim rule, same
-    // one chip per victim. The tag says only that the number combat reports for
-    // it is a strike's cyan rather than an ordinary hit's red.
-    if (lightning) world.add<LightningBurst>(burst);
+    return burst;
 }
 
 void PetalSystem::strikeLightning(World& world, Entity player, Vec2 at, double damage,
-                                  Rarity rarity) {
+                                  Rarity rarity, bool energizesCapacitor) {
     // A strike is a petal hitting something, so it is paid at the PETAL rate --
     // the steep effect table getDamageMultiplier() puts a puff, a pulse and a
     // shot on, not the gentle stat table a body slam takes. The reference hands
@@ -2837,7 +2834,9 @@ void PetalSystem::strikeLightning(World& world, Entity player, Vec2 at, double d
     // apex petal.
     const double base =
         damage > 0.0 ? damage : kLightningFallbackDamage * petalStrengthScale(rarity);
-    emitDamageBurst(world, player, at, kLightningRadius, base * scale, true);
+    const Entity burst = emitDamageBurst(world, player, at, kLightningRadius, base * scale);
+    if (burst == NULL_ENTITY) return;
+    world.add<LightningBurst>(burst, LightningBurst{energizesCapacitor});
     reportLightning(world, player, at, kLightningRadius);
 }
 

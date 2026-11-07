@@ -607,6 +607,9 @@ constexpr ChangelogEntry kChangelog[] = {
       "电容器提高伤害上限，装备 Cutter 时花朵贴住敌人也能充电",
       "补全花朵与电容器的机制和数值说明",
       "提高普通合成的基础成功率，Common 升 Uncommon 从 64% 提至 72%"}},
+    {"2026年11月8日（闪电联动）",
+     {"电容器蓄电速度提高，短暂接触也能打出更多伤害",
+      "闪电花瓣命中时，最强的电容器对一个目标追加电击，共享 0.9 秒冷却"}},
 };
 
 constexpr int kEntryCount = static_cast<int>(sizeof(kChangelog) / sizeof(kChangelog[0]));

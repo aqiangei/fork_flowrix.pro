@@ -116,6 +116,8 @@ struct PetalSlotState {
     /// Next time a lightning cutter may strike. The reference's limiter is per
     /// PLAYER rather than per petal, so two cutters share one cadence.
     double nextLightningMillis = 0;
+    /// Shared by the flower's capacitors for follow-up strikes.
+    double nextCapacitorSynergyMillis = 0;
 
     /// The flower's position at the END of the previous tick, which is the
     /// centre the ring orbits.
@@ -467,12 +469,12 @@ private:
     /// `lightning` marks the burst with LightningBurst, which changes nothing
     /// about who it hits or how hard -- only the colour of the number combat
     /// reports for it.
-    void emitDamageBurst(World& world, Entity player, Vec2 at, double radius, double damage,
-                         bool lightning = false);
+    Entity emitDamageBurst(World& world, Entity player, Vec2 at, double radius, double damage);
     /// One strike. `damage` is the petal's own stat, already up the rarity
     /// ladder; `rarity` is the tier it came from, which is what puts the
     /// fallback on that same ladder for a petal whose `damage` is 0.
-    void strikeLightning(World& world, Entity player, Vec2 at, double damage, Rarity rarity);
+    void strikeLightning(World& world, Entity player, Vec2 at, double damage, Rarity rarity,
+                         bool energizesCapacitor = false);
     /// The strike's visual half: one event carrying the bolts' endpoints. The
     /// damage half is a field, and a field has nothing on the wire the client
     /// could draw a strike from.

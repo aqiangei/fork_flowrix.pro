@@ -1492,7 +1492,10 @@ struct LightningClock {
 /// side of the rim counts as inside, and a strike wants every one of those to
 /// stay exactly what the burst already had. All it wants is a different colour
 /// on the number.
-struct LightningBurst {};
+struct LightningBurst {
+    /// Only a strike from the Lightning petal can trigger Capacitor's follow-up.
+    bool energizesCapacitor = false;
+};
 
 struct GroundEffect {
     GroundEffectKind kind = GroundEffectKind::Poison;
