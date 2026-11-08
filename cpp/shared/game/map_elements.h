@@ -150,6 +150,7 @@ struct MapElement {
     /// district while stocking one mob, and painting the district in that
     /// mob's tier would tell a player the whole district is that dangerous.
     bool singular = false;
+    bool worldUnique = false; ///< A singular band present only on the plain map.
 
     /// True when this `spawn` object owns a POPULATION: a difficulty band,
     /// stocked to a density of its own.

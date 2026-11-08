@@ -1433,8 +1433,34 @@
         "ai_type": "neutral",
         "range": 100,
         "groups": {
-            "computer": 0.01
+            "computer": 0.04
         }
+    },
+    "kernel_guardian": {
+        "name": "Kernel Guardian",
+        "health": 280,
+        "damage": 25,
+        "size": 1.1,
+        "speed": 0.55,
+        "cooldown": 2000,
+        "xp": {
+            "common": 1,
+            "uncommon": 2,
+            "rare": 5,
+            "epic": 35,
+            "legendary": 490,
+            "mythic": 8200,
+            "ultra": 200000,
+            "super": 1600000,
+            "unique": 8000000
+        },
+        "min_rarity": "super",
+        "description": "The computer's only active kernel guardian.",
+        "color": "#7056ba",
+        "ai_type": "hostile",
+        "range": 220,
+        "noEggDrop": true,
+        "image": "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"64\" height=\"64\" viewBox=\"0 0 64 64\"><path d=\"M21 8v10m11-10v10m11-10v10M21 46v10m11-10v10m11-10v10M8 21h10M8 32h10M8 43h10m28-22h10M46 32h10M46 43h10\" stroke=\"#dbb768\" stroke-width=\"5\" stroke-linecap=\"round\"/><rect x=\"14\" y=\"14\" width=\"36\" height=\"36\" rx=\"7\" fill=\"#7056ba\" stroke=\"#362862\" stroke-width=\"4\"/><path d=\"M32 21l9 4v7c0 5-4 9-9 11-5-2-9-6-9-11v-7z\" fill=\"#91e6dc\" stroke=\"#448c8c\" stroke-width=\"2\"/><path d=\"M28 32l3 3 5-6\" fill=\"none\" stroke=\"#315f65\" stroke-width=\"2.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></svg>"
     },
     "dust": {
         "name": "Dust",

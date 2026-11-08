@@ -610,6 +610,10 @@ constexpr ChangelogEntry kChangelog[] = {
     {"2026年11月8日（闪电联动）",
      {"电容器蓄电速度提高，短暂接触也能打出更多伤害",
       "闪电花瓣命中时，最强的电容器对一个目标追加电击，共享 0.9 秒冷却"}},
+    {"2026年11月8日（电脑区与首领）",
+     {"电脑区深处加入内核守卫，全服自然刷新最多一只",
+      "提高电脑区 C++ 刷新权重，转换机每 15 分钟换一次配方",
+      "普通地图的 Apex 同时存活上限提高到两只，水母区保留三个名额"}},
 };
 
 constexpr int kEntryCount = static_cast<int>(sizeof(kChangelog) / sizeof(kChangelog[0]));

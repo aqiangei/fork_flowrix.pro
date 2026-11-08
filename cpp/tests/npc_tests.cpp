@@ -2740,6 +2740,31 @@ TEST(an_assembler_is_a_hornets_size_at_every_tier) {
     }
 }
 
+TEST(an_assembler_rotates_to_a_different_recipe_without_moving) {
+    CHECK(ensureShippedContent());
+    World world;
+    Terrain terrain;
+    NpcSystem npcs;
+    NetIdAllocator ids;
+    npcs.netIds = &ids;
+    const auto index = content().mobIndex("assembler");
+    const Entity assembler = npcs.spawnNpc(world, terrain, content(), index, Rarity::Rare,
+                                            {300.0, 300.0}, Realm::Overworld, 0.0);
+    CHECK(assembler != NULL_ENTITY);
+    if (assembler == NULL_ENTITY) return;
+    const auto recipe = world.get<Npc>(assembler).recipe;
+    const auto id = world.get<NetId>(assembler).value;
+    const auto position = world.get<Transform>(assembler).position;
+    constexpr double refresh = 15.0 * 60.0 * 1000.0;
+    npcs.run(world, terrain, content(), {}, refresh - 1.0);
+    CHECK_EQ(world.get<Npc>(assembler).recipe, recipe);
+    CHECK_EQ(world.get<NetId>(assembler).value, id);
+    npcs.run(world, terrain, content(), {}, refresh);
+    CHECK(world.get<Npc>(assembler).recipe != recipe);
+    CHECK(world.get<NetId>(assembler).value != id);
+    CHECK_NEAR(distanceSq(world.get<Transform>(assembler).position, position), 0.0, 1e-9);
+}
+
 TEST(an_npc_recipe_list_is_read_and_its_mistakes_are_reported) {
     ContentRegistry registry;
     std::string error;

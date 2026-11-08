@@ -1714,7 +1714,7 @@ TEST(a_ready_clock_upgrades_one_super_and_then_cools_down) {
     CHECK_EQ(world.announced[rarityIndex(Rarity::Unique)], 1);
 }
 
-TEST(both_clocks_ready_gives_one_apex_and_one_unique) {
+TEST(both_clocks_ready_gives_two_apex_and_one_unique) {
     SuperBand world;
     world.deal();
     SpawnSystem::BiomeBossClock& clock = onlyClock(world.sim);
@@ -1722,9 +1722,9 @@ TEST(both_clocks_ready_gives_one_apex_and_one_unique) {
     clock.apexReadyMillis = 0.0;
     world.fill();
 
-    CHECK_EQ(mobsOfRarity(world.sim.world, Rarity::Apex), 1);
+    CHECK_EQ(mobsOfRarity(world.sim.world, Rarity::Apex), 2);
     CHECK_EQ(mobsOfRarity(world.sim.world, Rarity::Unique), 1);
-    CHECK_EQ(world.announced[rarityIndex(Rarity::Apex)], 1);
+    CHECK_EQ(world.announced[rarityIndex(Rarity::Apex)], 2);
     CHECK_EQ(world.announced[rarityIndex(Rarity::Unique)], 1);
     const SpawnSystem::BiomeBossClock& after = onlyClock(world.sim);
     CHECK(after.apexReadyMillis > world.sim.now + kApexSpawnCooldownMillis - 20000.0);
@@ -1821,12 +1821,11 @@ TEST(the_minion_cap_never_raises_a_minion) {
     for (const Rarity r : guard) CHECK(r == Rarity::Mythic);
 }
 
-TEST(a_biome_keeps_only_its_first_unique_and_its_first_apex) {
+TEST(a_biome_keeps_one_unique_and_two_apex) {
     // However two got there -- here spawnMob called while both clocks stand
     // ready, which is the one moment the console may place either tier (and
     // spawnMob itself charges nothing) -- the one that appeared LATER is
-    // despawned on the next population pass, per tier: one unique and one
-    // apex may stand together.
+    // despawned on the next population pass, per tier.
     WorldMaps maps;
     makeBandedWorld(maps, {Rect{kCentre.x + 12000.0, kCentre.y + 12000.0, 500.0, 500.0}}, "bee 100%");
     Sim sim;
@@ -1845,15 +1844,17 @@ TEST(a_biome_keeps_only_its_first_unique_and_its_first_apex) {
     const Entity secondUnique = spawn(Rarity::Unique, 3000.0);
     const Entity secondApex = spawn(Rarity::Apex, 4500.0);
     const Entity thirdUnique = spawn(Rarity::Unique, 6000.0);
+    const Entity thirdApex = spawn(Rarity::Apex, 7500.0);
     sim.jump(kPopulationIntervalMillis, {});
 
     CHECK(sim.world.isAlive(firstUnique));
     CHECK(sim.world.isAlive(firstApex));
     CHECK(!sim.world.isAlive(secondUnique));
-    CHECK(!sim.world.isAlive(secondApex));
+    CHECK(sim.world.isAlive(secondApex));
     CHECK(!sim.world.isAlive(thirdUnique));
+    CHECK(!sim.world.isAlive(thirdApex));
     CHECK_EQ(animalsOfRarity(sim.world, Rarity::Unique).size(), std::size_t(1));
-    CHECK_EQ(animalsOfRarity(sim.world, Rarity::Apex).size(), std::size_t(1));
+    CHECK_EQ(animalsOfRarity(sim.world, Rarity::Apex).size(), std::size_t(2));
 
     // Despawned, not killed: nothing died, so nothing pays out.
     Query<MobTag, Dead> corpses{sim.world};
@@ -2117,6 +2118,34 @@ TEST(hel_has_open_band_ground_to_lay_a_sacrifice_on) {
         CHECK(!sim.terrain.blocked(at, hel));
         CHECK(sim.spawner.difficultyAt(hel, at) == kRandomDifficulty);
     }
+}
+
+TEST(the_kernel_guardian_has_one_spawn_in_the_plain_computer) {
+    Sim sim;
+    WorldMaps maps;
+    std::string error;
+    const bool loaded = maps.load(testsupport::dataDir(), &sim.terrain, error);
+    CHECK(loaded);
+    if (!loaded) return;
+    bool found = false;
+    const Realm computer = maps.realmOfId("computer", found);
+    CHECK(found);
+    if (!found) return;
+    const auto guardian = shipped().mobIndex("kernel_guardian");
+    CHECK(guardian != kInvalidIndex);
+    sim.spawner.worldMaps = &maps;
+    for (int i = 0; i < 8; ++i) sim.jump(kPopulationIntervalMillis, {});
+
+    int count = 0;
+    Query<MobTag, MobType, Transform> mobs{sim.world};
+    mobs.without<Dead>();
+    mobs.each([&](Entity, MobTag&, MobType& type, Transform& at) {
+        if (type.configIndex != guardian) return;
+        ++count;
+        CHECK(at.realm == computer);
+        CHECK(type.rarity == Rarity::Super);
+    });
+    CHECK_EQ(count, 1);
 }
 
 TEST(a_band_stocks_its_own_outline_and_never_the_open_ground_beside_it) {
@@ -5627,7 +5656,7 @@ TEST(a_neverambient_mob_never_comes_from_a_group_roll_however_hard_the_ground) {
     }
 }
 
-TEST(jellyfish_zone_keeps_three_apex_but_other_zones_keep_one) {
+TEST(jellyfish_zone_keeps_three_apex_but_other_zones_keep_two) {
     for (bool jelly : {false, true}) {
         SuperBand world;
         const auto& b = world.band;
@@ -5641,9 +5670,9 @@ TEST(jellyfish_zone_keeps_three_apex_but_other_zones_keep_one) {
         world.deal();
         onlyClock(world.sim).apexReadyMillis = 0;
         world.fill();
-        CHECK_EQ(mobsOfRarity(world.sim.world, Rarity::Apex), jelly ? 3 : 1);
+        CHECK_EQ(mobsOfRarity(world.sim.world, Rarity::Apex), jelly ? 3 : 2);
         world.fill();
-        CHECK_EQ(mobsOfRarity(world.sim.world, Rarity::Apex), jelly ? 3 : 1);
+        CHECK_EQ(mobsOfRarity(world.sim.world, Rarity::Apex), jelly ? 3 : 2);
         std::remove(path.c_str());
     }
 }

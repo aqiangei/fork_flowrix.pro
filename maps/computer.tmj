@@ -874,6 +874,21 @@
                  "width":11468.8,
                  "x":7864.32,
                  "y":8519.68
+                },
+                {
+                 "height":4096,
+                 "id":19,
+                 "name":"kernel guardian zone",
+                 "properties":[
+                        {"name":"difficulty","type":"float","value":160},
+                        {"name":"mobs","type":"string","value":"kernel_guardian"},
+                        {"name":"worldUnique","type":"bool","value":true}],
+                 "rotation":0,
+                 "type":"",
+                 "visible":true,
+                 "width":4096,
+                 "x":768,
+                 "y":22272
                 }],
          "opacity":1,
          "type":"objectgroup",
@@ -915,7 +930,7 @@
          "y":0
         }],
  "nextlayerid":9,
- "nextobjectid":19,
+ "nextobjectid":20,
  "orientation":"orthogonal",
  "renderorder":"right-down",
  "tiledversion":"1.10.1",

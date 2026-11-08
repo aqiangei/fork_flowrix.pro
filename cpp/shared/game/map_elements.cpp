@@ -545,8 +545,9 @@ void MapData::adopt(const Json& array) {
             // a region and is said out loud rather than ignored: an author who
             // ticked it on the wrong object drew a shape that grows a hundred
             // of the mob they wanted one of, and nothing else would tell them.
-            if (properties.contains("singular")) {
-                element.singular = properties["singular"].asBool();
+            if (properties.contains("singular") || properties.contains("worldUnique")) {
+                element.worldUnique = element.hasDifficulty && properties["worldUnique"].asBool();
+                element.singular = element.worldUnique || properties["singular"].asBool();
                 if (element.singular && !element.hasDifficulty) {
                     contentWarning("[map] a spawn object is marked `singular` but has no "
                                    "`difficulty`, so it is a mob region and owns no population; "

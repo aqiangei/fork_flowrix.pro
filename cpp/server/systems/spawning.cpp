@@ -565,6 +565,7 @@ SpawnSystem::Sacrifice SpawnSystem::planSacrifice(World& world, const ContentReg
     const SpawnZone* zone = nullptr;
     for (const SpawnZone& candidate : zones_) {
         if (candidate.realm != realm) continue;
+        if (candidate.worldUnique) continue;
         if (!zoneContains(candidate.bounds, candidate.polygon, at)) continue;
         zone = &candidate;
         break;
@@ -1541,12 +1542,14 @@ void SpawnSystem::rebuildZones(const ContentRegistry& content) {
         realmBiome_[realmIndex(map.realm())] = biome;
         for (const MapElement& element : map.elements()) {
             if (!element.isSpawnBand() && !element.isMobRegion()) continue;
+            if (map.prestige() && element.worldUnique) continue;
             SpawnZone zone;
             zone.bounds = element.bounds;
             zone.polygon = element.polygon;
             zone.difficulty = element.difficulty;
             zone.realm = map.realm();
             zone.singular = element.singular;
+            zone.worldUnique = element.worldUnique;
             zone.prestige = map.prestige();
             zone.sewerGarbageBoost = map.id() == "sewers";
 
@@ -1727,7 +1730,8 @@ Rarity SpawnSystem::rollBossUpgrade(World& world, const SpawnZone& zone, double 
     // already standing in the biome does not draw either: it stays ready, and
     // the first super after that one dies gets the roll.
     const auto rolls = [&](double readyMillis, Rarity tier) {
-        const int limit = tier == Rarity::Apex && zone.extraApex ? kJellyfishZoneApexLimit : 1;
+        const int limit = tier != Rarity::Apex ? 1
+            : zone.extraApex ? kJellyfishZoneApexLimit : kApexBiomeLimit;
         return nowMillis >= readyMillis && !topBossTaken(world, tier, zone.realm, limit) &&
                bossRng_.chance(tier == Rarity::Apex ? apexChance : kBossUpgradeChance);
     };
@@ -1837,7 +1841,9 @@ void SpawnSystem::cullExtraTopBosses(World& world, CommandBuffer& commands) {
                 std::any_of(zones_.begin(), zones_.end(), [&](const SpawnZone& z) {
                     return z.extraApex && !z.prestige && z.biome == extra.biome;
                 });
-            if (count > (extraSlot ? kJellyfishZoneApexLimit : 1)) culled_.push_back(extra.entity);
+            const int limit = extra.rarity != Rarity::Apex ? 1
+                : extraSlot ? kJellyfishZoneApexLimit : kApexBiomeLimit;
+            if (count > limit) culled_.push_back(extra.entity);
         } else {
             count = 1;
         }
@@ -2029,7 +2035,7 @@ bool SpawnSystem::stockZone(World& world, const Terrain& terrain, const ContentR
     // stands there instead, one spawn in 100,000 and one super in 10,000.
     // At the tier the band rolled, and before the boss upgrade below, so a
     // super square can come out the biome's unique like any other super.
-    type = rollStandIn(content, type, rarity, rng);
+    if (!zone.worldUnique) type = rollStandIn(content, type, rarity, rng);
 
     // A super may come out a unique or an apex instead, if its biome's clock
     // for that tier has run down. After the type roll, which is safe because a
@@ -2037,7 +2043,8 @@ bool SpawnSystem::stockZone(World& world, const Terrain& terrain, const ContentR
     // for a permanent fixture, which is a DPS post rather than an event. Never
     // in a prestige twin, which has no clocks.
     bool upgraded = false;
-    if (rarity == Rarity::Super && !zone.prestige && !content.mob(type).neverAmbient) {
+    if (rarity == Rarity::Super && !zone.prestige && !zone.worldUnique &&
+        !content.mob(type).neverAmbient) {
         const double apexChance = zone.sewerGarbageBoost && content.mob(type).id == "garbage"
                                       ? kSewerGarbageApexUpgradeChance : kApexUpgradeChance;
         rarity = rollBossUpgrade(world, zone, nowMillis, apexChance);

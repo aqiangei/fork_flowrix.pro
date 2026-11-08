@@ -8,6 +8,10 @@
 
 namespace flix {
 
+namespace {
+constexpr double kAssemblerRecipeMillis = 15.0 * 60.0 * 1000.0;
+}
+
 void NpcSystem::bind(World& world) {
     if (boundWorld_ == &world) return;
     boundWorld_ = &world;
@@ -172,6 +176,7 @@ Entity NpcSystem::spawnNpc(World& world, const Terrain& terrain, const ContentRe
     if (!config.npc.recipes.empty()) {
         npc.recipe = static_cast<std::uint8_t>(
             rng_.below(static_cast<std::uint32_t>(config.npc.recipes.size())));
+        npc.recipeReadyAtMillis = nowMillis + kAssemblerRecipeMillis;
     }
     npc.cruises = !still && config.beeFlight && stats.speed > 0.0;
     const BeeCruiseDrive cruise = beeCruiseDrive(stats.speed, stats.cruiseSpeed);
@@ -206,6 +211,20 @@ void NpcSystem::run(World& world, const Terrain& terrain, const ContentRegistry&
     placeMissing(world, terrain, content, nowMillis);
 
     npcs_->each([&](Entity e, NpcTag&, Npc& npc, Transform& transform) {
+        if (npc.service == NpcService::Assembler && nowMillis >= npc.recipeReadyAtMillis) {
+            const auto count = static_cast<std::uint32_t>(
+                content.mob(npc.configIndex).npc.recipes.size());
+            if (count > 1) {
+                const std::uint32_t next = rng_.below(count - 1);
+                npc.recipe = static_cast<std::uint8_t>(next + (next >= npc.recipe));
+                // Clients receive the recipe in the spawn record. A fresh
+                // network ID replaces that record without moving the machine.
+                if (NetId* id = world.tryGet<NetId>(e); id && netIds) {
+                    id->value = netIds->next();
+                }
+            }
+            npc.recipeReadyAtMillis = nowMillis + kAssemblerRecipeMillis;
+        }
         // Neither moves nor turns: it stands where it was put down, facing
         // where it was put down facing.
         if (npc.still) return;
