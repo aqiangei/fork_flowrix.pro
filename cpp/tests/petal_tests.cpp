@@ -1626,6 +1626,19 @@ TEST(a_capacitor_charges_from_cutter_body_overlap) {
     CHECK_NEAR(lastStrikeDamage(rig), kCapacitorMaxCharge, 1e-6);
 }
 
+TEST(capacitor_contact_discharge_gains_half_the_reload_talent_reduction) {
+    if (!contentLoaded()) return;
+    Rig rig;
+    rig.world.ensure<PlayerSkillTree>(rig.player).skills.set(SkillId::Reload,
+                                                            rarityIndex(Rarity::Unique));
+    touchCapacitor(rig);
+    const double start = rig.now;
+    CHECK(rig.tickUntil([&] { return countStrikes(rig) > 0; }, 60));
+    // The 571.5 ms window is reached on tick 18 at 30 Hz.
+    CHECK_NEAR(rig.now - start, 18 * net::kTickMillis, 1e-6);
+    CHECK_NEAR(lastStrikeDamage(rig), kCapacitorMaxCharge, 1e-6);
+}
+
 TEST(a_capacitor_climbs_the_rarity_ladder_like_lightning) {
     if (!contentLoaded()) return;
     Rig rig;
@@ -1641,6 +1654,8 @@ TEST(a_capacitor_climbs_the_rarity_ladder_like_lightning) {
 TEST(lightning_triggers_only_the_strongest_capacitor_on_one_target) {
     if (!contentLoaded()) return;
     Rig rig;
+    rig.world.ensure<PlayerSkillTree>(rig.player).skills.set(SkillId::Reload,
+                                                            rarityIndex(Rarity::Unique));
     rig.equip(0, "lightning");
     rig.equip(1, "capacitor");
     rig.equip(2, "capacitor", Rarity::Uncommon);
@@ -1682,16 +1697,17 @@ TEST(lightning_triggers_only_the_strongest_capacitor_on_one_target) {
         combat.beginTick(rig.world, nowMillis, net::kTickSeconds, rig.events);
         combat.runWorldPhase(rig.world, grid, content, nowMillis, net::kTickSeconds);
     };
-    resolveBurst(true, net::kTickMillis);
+    constexpr double kTalentedCooldownMillis = 571.5;
+    resolveBurst(true, kTalentedCooldownMillis - net::kTickMillis);
     CHECK_NEAR(rig.healthOf(nearest), 10000.0 - 2 * lightningDamage - followUp, 1e-6);
     CHECK_NEAR(rig.healthOf(farther), 10000.0 - 2 * lightningDamage, 1e-6);
     CHECK_EQ(countStrikes(rig), std::size_t(2));
 
     // Other electrical bursts cannot trigger the combo even once ready.
-    resolveBurst(false, kCapacitorSynergyCooldownMillis);
+    resolveBurst(false, kTalentedCooldownMillis);
     CHECK_NEAR(rig.healthOf(nearest), 10000.0 - 3 * lightningDamage - followUp, 1e-6);
     CHECK_EQ(countStrikes(rig), std::size_t(2));
-    resolveBurst(true, kCapacitorSynergyCooldownMillis + net::kTickMillis);
+    resolveBurst(true, kTalentedCooldownMillis + net::kTickMillis);
     CHECK_NEAR(rig.healthOf(nearest), 10000.0 - 4 * lightningDamage - 2 * followUp, 1e-6);
     CHECK_EQ(countStrikes(rig), std::size_t(3));
 }

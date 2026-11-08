@@ -355,9 +355,11 @@ std::vector<TooltipLine> petalTooltipLines(std::uint16_t petalIndex, Rarity rari
             description = trEnZh(
                 "Charges while touching an enemy. Discharges when contact ends or the timer fills. "
                 "With Cutter, body overlap also charges it. When your Lightning hits, the strongest "
-                "equipped Capacitor strikes one surviving target again.",
+                "equipped Capacitor strikes one surviving target again. Both timers gain half of the "
+                "Reload talent's reduction.",
                 "碰到敌人时充电，离开敌人或达到持续接触时长时放电。"
-                "装备 Cutter 后身体重叠也能充电。闪电花瓣命中时，最强的电容器会对一个仍存活的目标追加电击。");
+                "装备 Cutter 后身体重叠也能充电。闪电花瓣命中时，最强的电容器会对一个仍存活的目标追加电击。"
+                "持续放电间隔和联动冷却均享受 Reload 天赋一半的缩减。");
         } else if (config.id == "lightning") {
             description = trEnZh(
                 "Strikes nearby enemies. Hits can trigger a follow-up from an equipped Capacitor.",
@@ -570,18 +572,22 @@ std::vector<TooltipLine> petalTooltipLines(std::uint16_t petalIndex, Rarity rari
     if (config.id == "capacitor") {
         const double chargeScale = petalStrengthScale(rarity) * skills.effectScale(SkillId::Damage);
         const double chargeRate = kCapacitorChargePerMillis * chargeScale;
+        const auto cooldown = [&](double baseMillis) {
+            return exactNumber(capacitorCooldownMillis(baseMillis, skills.reloadScale())) +
+                   trEnZh(" ms", " 毫秒");
+        };
         lines.push_back({std::string(trEnZh("Charge per millisecond: ", "每毫秒蓄积伤害：")) +
                          (chargeRate < 1000 ? oneDecimal(chargeRate) : abbreviate(chargeRate)), 12.0});
         lines.push_back({std::string(trEnZh("Max damage per hit: ", "单次闪电伤害上限：")) +
                          abbreviate(kCapacitorMaxCharge * chargeScale), 12.0});
         lines.push_back({std::string(trEnZh("Discharge interval on contact: ", "持续接触放电间隔：")) +
-                         reloadSeconds(kCapacitorWindowMillis), 12.0});
+                         cooldown(kCapacitorWindowMillis), 12.0});
         lines.push_back({std::string(trEnZh("Lightning radius: ", "放电半径：")) +
                          exactNumber(kLightningRadius), 12.0});
         lines.push_back({std::string(trEnZh("Lightning follow-up: ", "联动追加伤害：")) +
                          abbreviate(kCapacitorSynergyDamage * chargeScale), 12.0});
         lines.push_back({std::string(trEnZh("Shared follow-up cooldown: ", "联动共享冷却：")) +
-                         reloadSeconds(kCapacitorSynergyCooldownMillis), 12.0});
+                         cooldown(kCapacitorSynergyCooldownMillis), 12.0});
     }
 
     // Bur alone. Its description says the petal debuffs armour and cannot say

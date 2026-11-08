@@ -614,6 +614,9 @@ constexpr ChangelogEntry kChangelog[] = {
      {"电脑区深处加入内核守卫，全服自然刷新最多一只",
       "提高电脑区 C++ 刷新权重，转换机每 15 分钟换一次配方",
       "普通地图的 Apex 同时存活上限提高到两只，水母区保留三个名额"}},
+    {"2026年11月8日（电容器天赋）",
+     {"电容器的持续放电间隔和闪电联动冷却享受一半 Reload 天赋缩减",
+      "Common 电容器单次放电伤害上限调整为 75，联动追加伤害调整为 55"}},
 };
 
 constexpr int kEntryCount = static_cast<int>(sizeof(kChangelog) / sizeof(kChangelog[0]));

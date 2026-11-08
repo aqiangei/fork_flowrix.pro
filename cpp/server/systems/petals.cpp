@@ -3137,6 +3137,9 @@ void PetalSystem::dischargeCapacitors(World& world, const ContentRegistry& regis
     }
     if (capacitorList_.empty()) return;
 
+    const auto* tree = world.tryGet<PlayerSkillTree>(player);
+    const double windowMillis = capacitorCooldownMillis(
+        kCapacitorWindowMillis, tree ? tree->skills.reloadScale() : 1.0);
     const PlayerModifiers* modifiers = world.tryGet<PlayerModifiers>(player);
     const Transform* flower = world.tryGet<Transform>(player);
     const Body* flowerBody = world.tryGet<Body>(player);
@@ -3156,7 +3159,7 @@ void PetalSystem::dischargeCapacitors(World& world, const ContentRegistry& regis
                               touchesGridMob(world, player, transform->realm, at, stats.radius);
         if (touching) instance->contactMillis += dt * 1000.0;
         // Use a tolerance so floating-point tick sums don't delay the strike.
-        const bool windowOver = instance->contactMillis >= kCapacitorWindowMillis - 1e-6;
+        const bool windowOver = instance->contactMillis >= windowMillis - 1e-6;
         if (instance->contactMillis <= 0.0 || (touching && !windowOver)) continue;
 
         // Everything the strike needs is read and the clock is reset BEFORE it

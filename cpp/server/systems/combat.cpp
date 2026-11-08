@@ -2198,7 +2198,9 @@ void CombatSystem::dischargeCapacitorFollowUp(World& world, const ContentRegistr
     const Vec2 at = target->position;
     const auto* modifiers = world.tryGet<PlayerModifiers>(field.owner);
     const double talent = modifiers ? modifiers->petalDamageScale : 1.0;
-    slots->nextCapacitorSynergyMillis = nowMillis + kCapacitorSynergyCooldownMillis;
+    const auto* tree = world.tryGet<PlayerSkillTree>(field.owner);
+    slots->nextCapacitorSynergyMillis = nowMillis + capacitorCooldownMillis(
+        kCapacitorSynergyCooldownMillis, tree ? tree->skills.reloadScale() : 1.0);
     const DamageResult hit = applyDamage(world, victim, field.effect,
                                          kCapacitorSynergyDamage * strength * talent,
                                          nowMillis, DamageKind::Lightning);
