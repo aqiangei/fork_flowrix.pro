@@ -645,6 +645,7 @@ struct PlayerModifiers {
     /// Strongest worn Ruby only; additional strikes never trigger another chain.
     double lightningRepeatChance = 0.0;
     int maxLightningRepeats = 0;
+    double lightningPetalDamageScale = 1.0;
     /// What every heal this flower receives is scaled up by, less one: every
     /// worn basil's Heal Bonus, stacked harmonically (best + second / 2 +
     /// third / 3 ...). Zero without one.
@@ -1257,11 +1258,6 @@ struct PetalInstance {
     /// the flower walks into -- a battery declares no timed action and never
     /// reaches that gate at all.
     double nextChargeMillis = 0;
-    /// The capacitor's contact clock: how long this petal has spent against a
-    /// mob since it last discharged. Its shock is one point per millisecond of
-    /// this, capped, and is let go when the contact ends. Zero on every other
-    /// petal.
-    double contactMillis = 0;
 
     /// Set on a petal a MIMIC fielded: it is the petal to the mimic's left at
     /// the mimic's tier, but it pays the reload of `reloadRarity` -- the left
@@ -1493,10 +1489,7 @@ struct LightningClock {
 /// side of the rim counts as inside, and a strike wants every one of those to
 /// stay exactly what the burst already had. All it wants is a different colour
 /// on the number.
-struct LightningBurst {
-    /// Only a strike from the Lightning petal can trigger Capacitor's follow-up.
-    bool energizesCapacitor = false;
-};
+struct LightningBurst {};
 
 struct GroundEffect {
     GroundEffectKind kind = GroundEffectKind::Poison;

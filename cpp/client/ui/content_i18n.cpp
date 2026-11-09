@@ -324,7 +324,7 @@ constexpr Pair kPetalDescs[] = {
     {"c++_egg", "孵化一个C++宠物"},
     {"cactus", "它不是很强，但会增加你的生命值上限。"},
     {"cactus_egg", "孵化一个仙人掌宠物"},
-    {"capacitor", "接触怪物越久，造成的闪电伤害越高。伤害有上限"},
+    {"capacitor", "装备后提高闪电花瓣的电击伤害，Ruby 的闪电连击也享受增伤。多个电容器只取最高加成。"},
     {"carrot", "坚固，可靠。可以发射出去并从墙上反弹回来。"},
     {"centipede_body_egg", "孵化一个蜈蚣身体宠物"},
     {"centipede_egg", "孵化一个蜈蚣宠物"},

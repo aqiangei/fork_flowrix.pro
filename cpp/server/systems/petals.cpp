@@ -582,7 +582,6 @@ void PetalSystem::run(World& world, const ContentRegistry& registry, double nowM
         updateRing(world, player, aggregate, dt);
         placePetals(world, registry, player, aggregate, nowMillis, dt, terrain);
         runActions(world, registry, player, nowMillis, dt);
-        dischargeCapacitors(world, registry, player, dt);
         // Last, so a battery that goes flat is taken off the ring AFTER this
         // tick's placement rather than being flown to an orbit point it is
         // about to be reaped from.
@@ -1459,9 +1458,14 @@ PetalSystem::Aggregate PetalSystem::recomputeModifiers(World& world,
             if (!equipped.empty()) {
                 // Equipment is worn for the whole loadout, including while a
                 // petal is reloading; this is the same rule as tickBroadcast.
-                equipFlags |= registry.petal(equipped.configIndex).equipFlags;
-                if (registry.petal(equipped.configIndex).id == "cutter")
+                const PetalConfig& config = registry.petal(equipped.configIndex);
+                equipFlags |= config.equipFlags;
+                if (config.id == "cutter")
                     aggregate.modifiers.passThroughMobs = true;
+                if (config.id == "capacitor") {
+                    double& scale = aggregate.modifiers.lightningPetalDamageScale;
+                    scale = std::max(scale, 1.0 + capacitorLightningBonus(equipped.rarity));
+                }
             }
             // TypeScript derives modifiers from equipped loadout entries, not
             // from their onCooldown flag. A broken body leaves a ring gap but
@@ -2721,11 +2725,14 @@ void PetalSystem::runBehaviour(World& world, Entity player, Entity petal,
         case PetalBehaviourKind::None:
             return;
 
-        case PetalBehaviourKind::Lightning:
+        case PetalBehaviourKind::Lightning: {
             // Parked at spawn, so only a contact or a break strikes.
             if (trigger == PetalTrigger::Spawn || trigger == PetalTrigger::Interval) return;
-            strikeLightning(world, player, at, stats.damage, rarity, true);
+            const auto* mods = world.tryGet<PlayerModifiers>(player);
+            const double capacitorScale = mods ? mods->lightningPetalDamageScale : 1.0;
+            strikeLightning(world, player, at, stats.damage, rarity, capacitorScale);
             return;
+        }
 
         case PetalBehaviourKind::BloodLeaf: {
             if (trigger == PetalTrigger::Collision || trigger == PetalTrigger::Interval) return;
@@ -2816,7 +2823,7 @@ Entity PetalSystem::emitDamageBurst(World& world, Entity player, Vec2 at, double
 }
 
 void PetalSystem::strikeLightning(World& world, Entity player, Vec2 at, double damage,
-                                  Rarity rarity, bool energizesCapacitor) {
+                                  Rarity rarity, double damageScale) {
     // A strike is a petal hitting something, so it is paid at the PETAL rate --
     // the steep effect table getDamageMultiplier() puts a puff, a pulse and a
     // shot on, not the gentle stat table a body slam takes. The reference hands
@@ -2834,9 +2841,10 @@ void PetalSystem::strikeLightning(World& world, Entity player, Vec2 at, double d
     // apex petal.
     const double base =
         damage > 0.0 ? damage : kLightningFallbackDamage * petalStrengthScale(rarity);
-    const Entity burst = emitDamageBurst(world, player, at, kLightningRadius, base * scale);
+    const Entity burst = emitDamageBurst(world, player, at, kLightningRadius,
+                                         base * scale * damageScale);
     if (burst == NULL_ENTITY) return;
-    world.add<LightningBurst>(burst, LightningBurst{energizesCapacitor});
+    world.add<LightningBurst>(burst);
     reportLightning(world, player, at, kLightningRadius);
 }
 
@@ -3119,75 +3127,6 @@ void PetalSystem::strikeBatteries(World& world, const ContentRegistry& registry,
         // cooldown, holding three again.
         if (flat) spendPetal(world, registry, player, petal, slotId, subIndex, stats, nowMillis);
     }
-}
-
-void PetalSystem::dischargeCapacitors(World& world, const ContentRegistry& registry,
-                                      Entity player, double dt) {
-    const Loadout* loadout = world.tryGet<Loadout>(player);
-    if (loadout == nullptr) return;
-
-    // Snapshotted for the reason the batteries are: a strike creates entities,
-    // and the loadout's own list must not be walked while that happens.
-    capacitorList_.clear();
-    for (const Entity petal : loadout->spawned) {
-        const PetalInstance* instance = world.tryGet<PetalInstance>(petal);
-        if (instance == nullptr || world.has<Dead>(petal)) continue;
-        if (registry.petal(instance->configIndex).id != "capacitor") continue;
-        capacitorList_.push_back(petal);
-    }
-    if (capacitorList_.empty()) return;
-
-    const auto* tree = world.tryGet<PlayerSkillTree>(player);
-    const double windowMillis = capacitorCooldownMillis(
-        kCapacitorWindowMillis, tree ? tree->skills.reloadScale() : 1.0);
-    const PlayerModifiers* modifiers = world.tryGet<PlayerModifiers>(player);
-    const Transform* flower = world.tryGet<Transform>(player);
-    const Body* flowerBody = world.tryGet<Body>(player);
-    const bool cutterContact = modifiers && modifiers->passThroughMobs && flower && flowerBody &&
-                               touchesGridMob(world, player, flower->realm, flower->position,
-                                              flowerBody->radius);
-
-    for (const Entity petal : capacitorList_) {
-        PetalInstance* instance = world.tryGet<PetalInstance>(petal);
-        const Transform* transform = world.tryGet<Transform>(petal);
-        if (instance == nullptr || transform == nullptr) continue;
-        const Rarity rarity = instance->rarity;
-        const PetalStats stats = registry.petalStats(instance->configIndex, rarity);
-        const Vec2 at = transform->position;
-
-        const bool touching = cutterContact ||
-                              touchesGridMob(world, player, transform->realm, at, stats.radius);
-        if (touching) instance->contactMillis += dt * 1000.0;
-        // Use a tolerance so floating-point tick sums don't delay the strike.
-        const bool windowOver = instance->contactMillis >= windowMillis - 1e-6;
-        if (instance->contactMillis <= 0.0 || (touching && !windowOver)) continue;
-
-        // Everything the strike needs is read and the clock is reset BEFORE it
-        // is thrown, because the strike creates entities and nothing past this
-        // point may reach back through `instance`.
-        const double charge =
-            std::min(instance->contactMillis * kCapacitorChargePerMillis, kCapacitorMaxCharge);
-        instance->contactMillis = 0.0;
-        strikeLightning(world, player, at, charge * petalStrengthScale(rarity), rarity);
-    }
-}
-
-bool PetalSystem::touchesGridMob(World& world, Entity player, Realm realm, Vec2 at, double radius) {
-    // The attraction grid rather than touchesMob's linear sweep: a capacitor
-    // asks every tick for as long as it is on the ring, not once per life. The
-    // grid was filed at the top of this tick, after movement, so it is where
-    // the mobs are now.
-    attractionGrid_.query(realm, at, radius, attractionCandidates_);
-    for (const Entity mob : attractionCandidates_) {
-        if (!world.isAlive(mob) || world.has<Dead>(mob)) continue;
-        const Transform* transform = world.tryGet<Transform>(mob);
-        const Body* body = world.tryGet<Body>(mob);
-        if (transform == nullptr || body == nullptr) continue;
-        const double reach = radius + body->radius;
-        const double gap = distanceSq(transform->position, at);
-        if (gap < reach * reach && CombatSystem::canDamage(world, player, mob)) return true;
-    }
-    return false;
 }
 
 double PetalSystem::compassBearing(World& world, const ContentRegistry& registry,

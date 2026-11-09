@@ -1098,17 +1098,12 @@ inline constexpr int kBatteryCharges = 3;
 inline constexpr double kBatteryStrikeIntervalMillis = 500.0;
 inline constexpr double kLightningFallbackDamage = 25.0;
 inline constexpr double kLightningRadius = 1000.0;
-inline constexpr double kCapacitorChargePerMillis = 1.5;
-inline constexpr double kCapacitorMaxCharge = 75.0;
-inline constexpr double kCapacitorWindowMillis = 900.0;
-inline constexpr double kCapacitorSynergyDamage = 55.0;
-inline constexpr double kCapacitorSynergyCooldownMillis = 900.0;
 inline constexpr double kFlowerCorruptChance = 0.05;
 inline constexpr int kFlowerPetCount = 3;
 
-/// Capacitor gains half of the Reload talent's cooldown reduction.
-inline constexpr double capacitorCooldownMillis(double baseMillis, double reloadScale) {
-    return baseMillis * (0.5 + 0.5 * reloadScale);
+/// The strongest equipped capacitor boosts Lightning petal strikes.
+inline constexpr double capacitorLightningBonus(Rarity rarity) {
+    return 0.20 + 0.02 * ladderIndex(rarity);
 }
 
 /// A petal at one tier.

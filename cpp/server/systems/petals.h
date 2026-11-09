@@ -116,8 +116,6 @@ struct PetalSlotState {
     /// Next time a lightning cutter may strike. The reference's limiter is per
     /// PLAYER rather than per petal, so two cutters share one cadence.
     double nextLightningMillis = 0;
-    /// Shared by the flower's capacitors for follow-up strikes.
-    double nextCapacitorSynergyMillis = 0;
 
     /// The flower's position at the END of the previous tick, which is the
     /// centre the ring orbits.
@@ -416,14 +414,6 @@ private:
     void strikeBatteries(World& world, const ContentRegistry& registry, Entity player,
                          double nowMillis);
 
-    /// The capacitor's discharge: the same strike again, armed by the PETAL
-    /// leaving a mob it has been touching and worth the contact time it
-    /// banked. Its own pass rather than a behaviour because the thing that
-    /// fires it is the END of a contact, which the action pass -- asked about
-    /// contacts only on the tick they begin -- never sees.
-    void dischargeCapacitors(World& world, const ContentRegistry& registry, Entity player,
-                             double dt);
-
     /// `health` <= 0 spawns the petal with no Health component at all, which is
     /// what an unbreakable petal is: not one with zero hit points, which would
     /// break on its first tick.
@@ -466,15 +456,12 @@ private:
     /// An instantaneous area hit: everything a strike or an explosion needs
     /// beyond its own radius and damage.
     ///
-    /// `lightning` marks the burst with LightningBurst, which changes nothing
-    /// about who it hits or how hard -- only the colour of the number combat
-    /// reports for it.
     Entity emitDamageBurst(World& world, Entity player, Vec2 at, double radius, double damage);
     /// One strike. `damage` is the petal's own stat, already up the rarity
     /// ladder; `rarity` is the tier it came from, which is what puts the
     /// fallback on that same ladder for a petal whose `damage` is 0.
     void strikeLightning(World& world, Entity player, Vec2 at, double damage, Rarity rarity,
-                         bool energizesCapacitor = false);
+                         double damageScale = 1.0);
     /// The strike's visual half: one event carrying the bolts' endpoints. The
     /// damage half is a field, and a field has nothing on the wire the client
     /// could draw a strike from.
@@ -489,13 +476,10 @@ private:
     /// True once the petal's body overlaps any live wild mob IN ITS REALM,
     /// which is what arms a behaviour that parks until it hits something.
     /// This, compassBearing, collectMobsNear and revivePlayerNear sweep the
-    /// world linearly rather than through the broadphase (touchesGridMob alone
-    /// asks a grid), so the realm test is theirs to make: two maps'
+    /// world linearly rather than through the broadphase, so the realm test
+    /// is theirs to make: two maps'
     /// coordinates overlap numerically.
     bool touchesMob(World& world, Realm realm, Vec2 at, double radius);
-    /// touchesMob asked of the attraction grid instead of the whole world, for
-    /// a petal that asks every tick rather than until its first contact.
-    bool touchesGridMob(World& world, Entity player, Realm realm, Vec2 at, double radius);
     /// Where a compass at `at` points: the nearest magnet its flower wears,
     /// or else the highest-tier wild mob in its realm (the nearest of those),
     /// with florr's needle wobble on top. `fallback`, its place on the ring,
@@ -653,8 +637,6 @@ private:
     /// first one fires: a discharge creates entities and can put its slot on
     /// the reload, and neither is legal while the loadout's own list is walked.
     std::vector<Entity> batteryList_;
-    /// The player's live capacitors, snapshotted for the same reason.
-    std::vector<Entity> capacitorList_;
     /// One player's live petals bucketed by slot, rebuilt per player. Members
     /// so the per-tick work does not allocate.
     std::array<std::vector<Entity>, kLoadoutSlots> bySlot_;

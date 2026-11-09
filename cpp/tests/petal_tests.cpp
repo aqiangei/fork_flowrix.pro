@@ -1453,11 +1453,12 @@ TEST(a_strike_is_paid_at_the_petal_damage_rate) {
     if (!contentLoaded()) return;
     Rig plain;
     plain.equip(0, "battery");
+    plain.equip(1, "capacitor", Rarity::Apex);
     plain.settleEquips();
     ramMob(plain);
     CHECK(plain.tickUntil([&] { return countStrikes(plain) > 0; }, 60));
-    // An untalented common flower is the baseline the multiplier below is
-    // measured against.
+    // Capacitor applies to Lightning, so this untalented battery stays at
+    // its base damage.
     CHECK_NEAR(lastStrikeDamage(plain), kFallbackStrike, 1e-9);
 
     // The same slam under the Damage talent. A strike is something a PETAL
@@ -1530,186 +1531,44 @@ TEST(a_battery_ignores_a_mob_that_only_touches_the_ring) {
 // The capacitor
 // ---------------------------------------------------------------------------
 
-/// A capacitor on a frozen ring, with a mob sitting on it.
-Entity touchCapacitor(Rig& rig, Rarity rarity = Rarity::Common) {
-    rig.equip(0, "capacitor", rarity);
-    rig.freezeRing();
-    rig.settleEquips();
-    rig.settleRing();
-    const Vec2 at = rig.position(rig.petals(0).front());
-    return addMob(rig, {at.x + 5.0, at.y});
-}
-
-/// Take the mob off the capacitor without taking it out of the strike's reach,
-/// so the discharge still has a bolt to report.
-void pullAway(Rig& rig, Entity mob) {
-    const Vec2 petal = rig.position(rig.petals(0).front());
-    rig.world.get<Transform>(mob).position = {petal.x + 300.0, petal.y};
-}
-
-TEST(a_capacitor_discharges_what_it_banked_when_contact_ends) {
+TEST(capacitor_boosts_lightning_and_ruby_repeats_with_only_the_best_active_tier) {
     if (!contentLoaded()) return;
     Rig rig;
-    rig.equip(0, "capacitor");
-    rig.freezeRing();
-    rig.settleEquips();
-    rig.settleRing();
-
-    // Nothing to touch: no charge, no strike.
-    rig.tick(40);
-    CHECK_EQ(countStrikes(rig), std::size_t(0));
-
-    const Vec2 at = rig.position(rig.petals(0).front());
-    const Entity mob = addMob(rig, {at.x + 5.0, at.y});
-    // Charging, silently, for as long as the contact lasts.
-    rig.tick();
-    CHECK_EQ(countStrikes(rig), std::size_t(0));
-
-    pullAway(rig, mob);
-    rig.tick();
-    CHECK_EQ(countStrikes(rig), std::size_t(1));
-    // One tick against the mob, under the cap.
-    const double charge = net::kTickMillis * kCapacitorChargePerMillis;
-    CHECK_NEAR(lastStrikeDamage(rig), charge, 1e-6);
-    CombatSystem combat;
-    ricochetCombatTick(rig, combat);
-    CHECK_NEAR(rig.healthOf(mob), 10000.0 - charge, 1e-6);
-
-    // Spent: stepping clear again throws nothing more.
-    rig.tick(40);
-    CHECK_EQ(countStrikes(rig), std::size_t(1));
-}
-
-TEST(a_capacitor_holds_no_more_than_its_cap) {
-    if (!contentLoaded()) return;
-    Rig rig;
-    const Entity mob = touchCapacitor(rig);
-    // A third of a second against the mob, well past what the cap takes.
-    rig.tick(10);
-    CHECK_EQ(countStrikes(rig), std::size_t(0));
-    pullAway(rig, mob);
-    rig.tick();
-    CHECK_EQ(countStrikes(rig), std::size_t(1));
-    CHECK_NEAR(lastStrikeDamage(rig), kCapacitorMaxCharge, 1e-6);
-}
-
-TEST(a_capacitor_that_never_leaves_discharges_periodically) {
-    if (!contentLoaded()) return;
-    Rig rig;
-    touchCapacitor(rig);
-    const double start = rig.now;
-
-    // Held against the mob throughout. A capacitor that only fired on leaving
-    // would bank forever here.
-    CHECK(rig.tickUntil([&] { return countStrikes(rig) > 0; }, 60));
-    CHECK_NEAR(rig.now - start, kCapacitorWindowMillis, 1e-6);
-    CHECK_NEAR(lastStrikeDamage(rig), kCapacitorMaxCharge, 1e-6);
-
-    // And starts over rather than firing every tick from then on.
-    const double first = rig.now;
-    CHECK(rig.tickUntil([&] { return countStrikes(rig) > 1; }, 60));
-    CHECK_NEAR(rig.now - first, kCapacitorWindowMillis, 1e-6);
-}
-
-TEST(a_capacitor_charges_from_cutter_body_overlap) {
-    if (!contentLoaded()) return;
-    Rig rig;
-    rig.equip(0, "capacitor");
-    rig.freezeRing();
-    rig.settleEquips();
-    rig.settleRing();
-    addMob(rig, rig.position(rig.player));
-    CHECK(!rig.tickUntil([&] { return countStrikes(rig) > 0; }, 30));
-
-    rig.equip(1, "cutter");
-    CHECK(rig.tickUntil([&] { return countStrikes(rig) > 0; }, 60));
-    CHECK_NEAR(lastStrikeDamage(rig), kCapacitorMaxCharge, 1e-6);
-}
-
-TEST(capacitor_contact_discharge_gains_half_the_reload_talent_reduction) {
-    if (!contentLoaded()) return;
-    Rig rig;
-    rig.world.ensure<PlayerSkillTree>(rig.player).skills.set(SkillId::Reload,
-                                                            rarityIndex(Rarity::Unique));
-    touchCapacitor(rig);
-    const double start = rig.now;
-    CHECK(rig.tickUntil([&] { return countStrikes(rig) > 0; }, 60));
-    // The 571.5 ms window is reached on tick 18 at 30 Hz.
-    CHECK_NEAR(rig.now - start, 18 * net::kTickMillis, 1e-6);
-    CHECK_NEAR(lastStrikeDamage(rig), kCapacitorMaxCharge, 1e-6);
-}
-
-TEST(a_capacitor_climbs_the_rarity_ladder_like_lightning) {
-    if (!contentLoaded()) return;
-    Rig rig;
-    const Entity mob = touchCapacitor(rig, Rarity::Legendary);
-    rig.tick(10);
-    pullAway(rig, mob);
-    rig.tick();
-    CHECK_EQ(countStrikes(rig), std::size_t(1));
-    CHECK_NEAR(lastStrikeDamage(rig), kCapacitorMaxCharge * petalStatScale(Rarity::Legendary),
-               1e-6);
-}
-
-TEST(lightning_triggers_only_the_strongest_capacitor_on_one_target) {
-    if (!contentLoaded()) return;
-    Rig rig;
-    rig.world.ensure<PlayerSkillTree>(rig.player).skills.set(SkillId::Reload,
-                                                            rarityIndex(Rarity::Unique));
     rig.equip(0, "lightning");
     rig.equip(1, "capacitor");
-    rig.equip(2, "capacitor", Rarity::Uncommon);
+    rig.equip(2, "capacitor", Rarity::Legendary);
+    rig.equip(kLoadoutActiveSlots, "capacitor", Rarity::Apex);
     rig.freezeRing();
     rig.settleEquips();
     rig.settleRing();
-    const Vec2 orbit = rig.position(rig.petals(0).front());
-    const Entity nearest = addMob(rig, {orbit.x + 2.0, orbit.y});
-    const Entity farther = addMob(rig, {orbit.x + 500.0, orbit.y});
-    CHECK(rig.tickUntil([&] { return countStrikes(rig) == 1; }, 60));
+    CHECK_NEAR(rig.modifiers().lightningPetalDamageScale, 1.28, 1e-9);
+    CHECK_NEAR(capacitorLightningBonus(Rarity::Apex), 0.38, 1e-9);
 
-    // Resolve the real Lightning petal's field with two live targets and no
-    // direct ring hits, so only the original strike and follow-up count here.
+    const Vec2 orbit = rig.position(rig.petals(0).front());
+    const Entity mob = addMob(rig, {orbit.x + 2.0, orbit.y});
+    CHECK(rig.tickUntil([&] { return countStrikes(rig) == 1; }, 60));
     const auto& content = fixture().registry;
+    const double damage = content.petalStats(petalId("lightning"), Rarity::Common).damage * 1.28;
+    CHECK_NEAR(lastStrikeDamage(rig), damage, 1e-9);
+
+    // Resolve the actual burst with one guaranteed Ruby repeat. Both hits
+    // carry the same boosted amount and come from the original Lightning.
+    auto& modifiers = rig.world.get<PlayerModifiers>(rig.player);
+    modifiers.lightningRepeatChance = 1.0;
+    modifiers.maxLightningRepeats = 1;
     SpatialGrid grid;
-    for (const Entity mob : {nearest, farther}) {
-        grid.insert(mob, Realm::Overworld, rig.position(mob), rig.world.get<Body>(mob).radius);
-    }
+    grid.insert(mob, Realm::Overworld, rig.position(mob), rig.world.get<Body>(mob).radius);
     CombatSystem combat;
     combat.beginTick(rig.world, rig.now, net::kTickSeconds, rig.events);
     combat.runWorldPhase(rig.world, grid, content, rig.now, net::kTickSeconds);
-    const double lightningDamage = content.petalStats(petalId("lightning"), Rarity::Common).damage;
-    const double followUp = kCapacitorSynergyDamage * petalStrengthScale(Rarity::Uncommon);
-    CHECK_NEAR(rig.healthOf(nearest), 10000.0 - lightningDamage - followUp, 1e-6);
-    CHECK_NEAR(rig.healthOf(farther), 10000.0 - lightningDamage, 1e-6);
-    CHECK_EQ(countStrikes(rig), std::size_t(2));
+    CHECK_NEAR(rig.healthOf(mob), 10000.0 - damage * 2, 1e-6);
 
-    // A second valid Lightning strike within the shared cooldown only deals
-    // its own damage. Keep it independent of the ring's reload.
-    const auto resolveBurst = [&](bool fromLightningPetal, double delayMillis) {
-        const Entity burst = rig.world.create();
-        rig.world.add<Transform>(burst, Transform{orbit});
-        rig.world.add<GroundEffect>(
-            burst, GroundEffect{GroundEffectKind::Poison, rig.player, kLightningRadius,
-                                0.0, 1.0, Rarity::Common, lightningDamage, 0.0});
-        rig.world.add<LightningBurst>(burst, LightningBurst{fromLightningPetal});
-        rig.world.add<Lifetime>(burst, Lifetime{net::kTickSeconds * 1.5});
-        const double nowMillis = rig.now + delayMillis;
-        combat.beginTick(rig.world, nowMillis, net::kTickSeconds, rig.events);
-        combat.runWorldPhase(rig.world, grid, content, nowMillis, net::kTickSeconds);
-    };
-    constexpr double kTalentedCooldownMillis = 571.5;
-    resolveBurst(true, kTalentedCooldownMillis - net::kTickMillis);
-    CHECK_NEAR(rig.healthOf(nearest), 10000.0 - 2 * lightningDamage - followUp, 1e-6);
-    CHECK_NEAR(rig.healthOf(farther), 10000.0 - 2 * lightningDamage, 1e-6);
-    CHECK_EQ(countStrikes(rig), std::size_t(2));
-
-    // Other electrical bursts cannot trigger the combo even once ready.
-    resolveBurst(false, kTalentedCooldownMillis);
-    CHECK_NEAR(rig.healthOf(nearest), 10000.0 - 3 * lightningDamage - followUp, 1e-6);
-    CHECK_EQ(countStrikes(rig), std::size_t(2));
-    resolveBurst(true, kTalentedCooldownMillis + net::kTickMillis);
-    CHECK_NEAR(rig.healthOf(nearest), 10000.0 - 4 * lightningDamage - 2 * followUp, 1e-6);
-    CHECK_EQ(countStrikes(rig), std::size_t(3));
+    rig.unequip(2);
+    rig.tick();
+    CHECK_NEAR(rig.modifiers().lightningPetalDamageScale, 1.20, 1e-9);
+    rig.unequip(1);
+    rig.tick();
+    CHECK_NEAR(rig.modifiers().lightningPetalDamageScale, 1.0, 1e-9);
 }
 
 // ---------------------------------------------------------------------------

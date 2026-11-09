@@ -7,7 +7,6 @@
 
 #include "server/loot_eligibility.h"
 #include "server/systems/movement.h"
-#include "server/systems/petals.h"
 #include "shared/game/npc.h"
 
 namespace flix {
@@ -2069,14 +2068,13 @@ void CombatSystem::tickGroundEffects(World& world, const SpatialGrid& grid,
         // A strike's burst is a pollen puff in every respect the field pass
         // cares about -- same reach rule, same rim rule, same once-per-victim
         // chip -- and differs only in the colour of the number it reports.
-        const auto* lightning = world.tryGet<LightningBurst>(e);
-        const DamageKind hitKind = lightning ? DamageKind::Lightning : DamageKind::Direct;
+        const DamageKind hitKind = world.has<LightningBurst>(e) ? DamageKind::Lightning
+                                                                : DamageKind::Direct;
         fields_.push_back({e, effect.kind, hitKind, transform.position, effect.radius,
                            effect.damagePerSecond, effect.slowFactor, effect.rarity,
                            effect.damagePerHit, effect.damageIntervalMillis, transform.realm,
                            effect.slowsFlowers, effect.owner, effect.poisonDurationMillis,
-                           effect.ownerPoisonPerSecond,
-                           lightning && lightning->energizesCapacitor});
+                           effect.ownerPoisonPerSecond});
     });
 
     for (const FieldSource& field : fields_) {
@@ -2093,8 +2091,6 @@ void CombatSystem::tickGroundEffects(World& world, const SpatialGrid& grid,
         }
         if (field.damagePerSecond <= 0.0 && field.damagePerHit <= 0.0 &&
             field.slowFactor >= 1.0) continue;
-        Entity followUpTarget = NULL_ENTITY;
-        double nearestHit = std::numeric_limits<double>::infinity();
         queryBodies(grid, field.realm, field.position, field.radius + kBroadphasePad, candidates_);
         for (const Entity victim : candidates_) {
             const Transform* transform = world.tryGet<Transform>(victim);
@@ -2140,11 +2136,6 @@ void CombatSystem::tickGroundEffects(World& world, const SpatialGrid& grid,
                         world.ensure<HitCooldowns>(field.effect)
                             .arm(victim, nowMillis + field.damageIntervalMillis);
                     }
-                    if (field.energizesCapacitor && hit.applied > 0 && !hit.killed &&
-                        gapSq < nearestHit) {
-                        followUpTarget = victim;
-                        nearestHit = gapSq;
-                    }
                 }
             } else if (field.damagePerSecond > 0.0 && field.poisonDurationMillis > 0.0) {
                 // Credited through the field to its owner, as a petal's bite
@@ -2165,47 +2156,6 @@ void CombatSystem::tickGroundEffects(World& world, const SpatialGrid& grid,
                           field.rarity, nowMillis);
             }
         }
-        if (followUpTarget != NULL_ENTITY) {
-            dischargeCapacitorFollowUp(world, content, field, followUpTarget, nowMillis);
-        }
-    }
-}
-
-void CombatSystem::dischargeCapacitorFollowUp(World& world, const ContentRegistry& content,
-                                             const FieldSource& field, Entity victim,
-                                             double nowMillis) {
-    auto* slots = world.tryGet<PetalSlotState>(field.owner);
-    const auto* loadout = world.tryGet<Loadout>(field.owner);
-    if (!slots || !loadout || world.has<Dead>(field.owner) ||
-        nowMillis < slots->nextCapacitorSynergyMillis) return;
-
-    const std::uint16_t capacitor = content.petalIndex("capacitor");
-    double strength = 0;
-    Vec2 origin;
-    for (const Entity petal : loadout->spawned) {
-        const auto* instance = world.tryGet<PetalInstance>(petal);
-        if (!instance || instance->configIndex != capacitor || world.has<Dead>(petal)) continue;
-        const auto* transform = world.tryGet<Transform>(petal);
-        if (!transform || transform->realm != field.realm) continue;
-        const double scale = petalStrengthScale(instance->rarity);
-        if (scale <= strength) continue;
-        strength = scale;
-        origin = transform->position;
-    }
-    if (strength <= 0) return;
-    const auto* target = world.tryGet<Transform>(victim);
-    if (!target) return;
-    const Vec2 at = target->position;
-    const auto* modifiers = world.tryGet<PlayerModifiers>(field.owner);
-    const double talent = modifiers ? modifiers->petalDamageScale : 1.0;
-    const auto* tree = world.tryGet<PlayerSkillTree>(field.owner);
-    slots->nextCapacitorSynergyMillis = nowMillis + capacitorCooldownMillis(
-        kCapacitorSynergyCooldownMillis, tree ? tree->skills.reloadScale() : 1.0);
-    const DamageResult hit = applyDamage(world, victim, field.effect,
-                                         kCapacitorSynergyDamage * strength * talent,
-                                         nowMillis, DamageKind::Lightning);
-    if (events_ && hit.applied > 0) {
-        events_->lightning(origin, (at - origin).length(), field.realm, {at});
     }
 }
 

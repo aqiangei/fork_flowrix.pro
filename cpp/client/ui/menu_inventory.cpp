@@ -321,7 +321,7 @@ std::vector<TooltipLine> petalTooltipLines(std::uint16_t petalIndex, Rarity rari
     // 1.5s"). A worn petal has no reload and florr prints nothing for it.
     const std::string enName = titleCase(config.name);
     TooltipLine title{petalNameTr(config.id, enName.c_str()), 20.0};
-    if (!config.noPhysics) {
+    if (!config.noPhysics && config.id != "capacitor") {
         if (stats.requiredMana > 0.0) {
             // Paid on spawn, not on use -- see PetalConfig::requiredMana.
             title.badges.push_back({oneDecimal(stats.requiredMana), kStatMana, TooltipIcon::Mana});
@@ -351,19 +351,6 @@ std::vector<TooltipLine> petalTooltipLines(std::uint16_t petalIndex, Rarity rari
                 "or corrupts your flower, enabling PvP anywhere. Apex summons Eternal pets.",
                 "碰到怪物时破裂，在碰撞处召唤故障花，或使自己的花朵故障并进入可交战状态。"
                 "Apex 花瓣召唤永恒故障花。");
-        } else if (config.id == "capacitor") {
-            description = trEnZh(
-                "Charges while touching an enemy. Discharges when contact ends or the timer fills. "
-                "With Cutter, body overlap also charges it. When your Lightning hits, the strongest "
-                "equipped Capacitor strikes one surviving target again. Both timers gain half of the "
-                "Reload talent's reduction.",
-                "碰到敌人时充电，离开敌人或达到持续接触时长时放电。"
-                "装备 Cutter 后身体重叠也能充电。闪电花瓣命中时，最强的电容器会对一个仍存活的目标追加电击。"
-                "持续放电间隔和联动冷却均享受 Reload 天赋一半的缩减。");
-        } else if (config.id == "lightning") {
-            description = trEnZh(
-                "Strikes nearby enemies. Hits can trigger a follow-up from an equipped Capacitor.",
-                "电击附近敌人。命中时可触发已装备的电容器追加电击。");
         }
         static const std::string kRaritySlot = "{rarity}";
         for (std::size_t at = description.find(kRaritySlot); at != std::string::npos;
@@ -570,24 +557,8 @@ std::vector<TooltipLine> petalTooltipLines(std::uint16_t petalIndex, Rarity rari
                          percentNumber(kFlowerCorruptChance) + "%", 12.0});
     }
     if (config.id == "capacitor") {
-        const double chargeScale = petalStrengthScale(rarity) * skills.effectScale(SkillId::Damage);
-        const double chargeRate = kCapacitorChargePerMillis * chargeScale;
-        const auto cooldown = [&](double baseMillis) {
-            return exactNumber(capacitorCooldownMillis(baseMillis, skills.reloadScale())) +
-                   trEnZh(" ms", " 毫秒");
-        };
-        lines.push_back({std::string(trEnZh("Charge per millisecond: ", "每毫秒蓄积伤害：")) +
-                         (chargeRate < 1000 ? oneDecimal(chargeRate) : abbreviate(chargeRate)), 12.0});
-        lines.push_back({std::string(trEnZh("Max damage per hit: ", "单次闪电伤害上限：")) +
-                         abbreviate(kCapacitorMaxCharge * chargeScale), 12.0});
-        lines.push_back({std::string(trEnZh("Discharge interval on contact: ", "持续接触放电间隔：")) +
-                         cooldown(kCapacitorWindowMillis), 12.0});
-        lines.push_back({std::string(trEnZh("Lightning radius: ", "放电半径：")) +
-                         exactNumber(kLightningRadius), 12.0});
-        lines.push_back({std::string(trEnZh("Lightning follow-up: ", "联动追加伤害：")) +
-                         abbreviate(kCapacitorSynergyDamage * chargeScale), 12.0});
-        lines.push_back({std::string(trEnZh("Shared follow-up cooldown: ", "联动共享冷却：")) +
-                         cooldown(kCapacitorSynergyCooldownMillis), 12.0});
+        lines.push_back({std::string(trEnZh("Lightning petal damage: +", "闪电花瓣伤害：+")) +
+                         percentNumber(capacitorLightningBonus(rarity)) + "%", 12.0});
     }
 
     // Bur alone. Its description says the petal debuffs armour and cannot say

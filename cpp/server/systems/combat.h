@@ -546,7 +546,6 @@ private:
         Entity owner = NULL_ENTITY;
         double poisonDurationMillis = 0;
         double ownerPoisonPerSecond = 0;
-        bool energizesCapacitor = false;
     };
 
     struct ShotSource {
@@ -604,8 +603,6 @@ private:
     /// CONFIG radius rather than the body it actually spawned with.
     void tickGroundEffects(World& world, const SpatialGrid& grid, const ContentRegistry& content,
                            double nowMillis, double dt);
-    void dischargeCapacitorFollowUp(World& world, const ContentRegistry& content,
-                                    const FieldSource& field, Entity victim, double nowMillis);
     /// A uranium cloud's bite on the flower wearing it. Sourceless, because
     /// the flower's own side could never hurt it; and it never weakens a
     /// stronger live bite, since a flower carries only one and a common
