@@ -172,11 +172,8 @@ struct Session {
     /// are dropped, so a duplicated packet cannot move the player twice.
     std::uint32_t lastInputSequence = 0;
 
-    /// Whether this body's death has already been announced. A player's corpse
-    /// KEEPS its Dead tag so the client goes on being sent a dead flower, so
-    /// the reaper sees it again every tick and needs to know it is done with
-    /// it. Cleared when a new body is spawned.
-    bool deathReported = false;
+    /// Set when this body's death is announced. Zero when no respawn is pending.
+    double autoRespawnAtMillis = 0;
 
     // -- abuse limits ------------------------------------------------------
     //

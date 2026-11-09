@@ -10,8 +10,8 @@
 // Death is the other half. The card is a screen of its own (Screen::Dead)
 // rather than a dialog, because everything under it keeps running: the world
 // dims but still draws, the HUD and the panels stay at full brightness.
-// Continue requests an in-place respawn near the corpse; Close only hides the
-// card (player stays dead) -- its dim and its Enter shortcut go with it.
+// Continue requests an immediate respawn near the corpse. Close hides the
+// card while the server's automatic respawn timer keeps running.
 
 #include "client/app.h"
 
@@ -86,9 +86,11 @@ constexpr double kDeathCloseRim = 4.0;
 constexpr double kDeathCloseRadius = 3.0;
 constexpr double kDeathCloseTextSize = 16.0;
 constexpr std::uint32_t kDeathCloseFill = 0x666666u;
+constexpr double kDeathRespawnHintY = 165.0;
+constexpr double kDeathRespawnHintSize = 13.0;
 
-/// How far the card reaches below the flower: Close's box and half its rim.
-constexpr double kDeathCardBelow = kDeathCloseY + kDeathCloseHeight * 0.5 + kDeathCloseRim * 0.5;
+/// How far the card reaches below the flower.
+constexpr double kDeathCardBelow = kDeathRespawnHintY + kDeathRespawnHintSize * 0.5;
 
 /// How far past the top edge the parked card's last row sits. The card stops
 /// being painted at a slide of 0.01, still 1% short of parked, and that 1%
@@ -421,8 +423,8 @@ void App::updateDead(double dt) {
         return;
     }
     // Close takes the card away -- it slides back up the way it came -- and
-    // the world's dim fades out with it. The player stays dead, and the HUD
-    // and the minimap keep drawing behind where it was.
+    // the world's dim fades out with it. The HUD and minimap keep drawing
+    // while the server waits to respawn the player.
     if (hit(card.closeBox, mouse)) deathCardVisible_ = false;
 }
 
@@ -437,8 +439,7 @@ void App::drawDeathCard(Canvas& canvas, double time) {
     const DeathCard card = deathCardLayout(canvas.width(), canvas.height(), deathCardSlide_);
     const Vec2 mouse{window_.mouseX(), window_.mouseY()};
 
-    // Bold white with the ordinary 0.12-of-size outline. No hint line under
-    // the buttons: Continue is a click, with no key behind it.
+    // Bold white with the ordinary 0.12-of-size outline.
     TextStyle line;
     line.align = Align::Centre;
     line.size = kDeathDestroyedBySize;
@@ -469,6 +470,13 @@ void App::drawDeathCard(Canvas& canvas, double time) {
     closeStyle.radius = kDeathCloseRadius;
     closeStyle.textSize = kDeathCloseTextSize;
     button(canvas, card.closeBox, tr(Msg::Close), overClose, overClose && pressing, closeStyle);
+    if (net_.dead()) {
+        line.size = kDeathRespawnHintSize;
+        const std::string seconds = std::to_string(kAutoRespawnDelaySeconds);
+        const std::string hint = language() == Language::Zh ? "通常在 " + seconds + " 秒后自动复活"
+                                                          : "Auto-respawn usually takes " + seconds + "s";
+        text(canvas, hint, card.flower.x, card.flower.y + kDeathRespawnHintY, line);
+    }
 }
 
 void App::tallyRunLoot() {

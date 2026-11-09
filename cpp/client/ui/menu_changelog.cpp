@@ -617,6 +617,9 @@ constexpr ChangelogEntry kChangelog[] = {
     {"2026年11月8日（电容器天赋）",
      {"电容器的持续放电间隔和闪电联动冷却享受一半 Reload 天赋缩减",
       "Common 电容器单次放电伤害上限调整为 75，联动追加伤害调整为 55"}},
+    {"2026年11月9日（自动复活）",
+     {"死亡后通常等待 8 秒自动复活，自动复活会等禁止复活效果结束",
+      "点击继续仍可立即复活"}},
 };
 
 constexpr int kEntryCount = static_cast<int>(sizeof(kChangelog) / sizeof(kChangelog[0]));

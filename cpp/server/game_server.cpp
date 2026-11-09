@@ -1205,7 +1205,19 @@ void GameServer::reapDead() {
                 destroyBody(e);
                 continue;
             }
-            if (session != nullptr ? session->deathReported : bot->deathAnnounced) continue;
+            if (session != nullptr && session->autoRespawnAtMillis > 0.0) {
+                if (clockMillis_ >= session->autoRespawnAtMillis &&
+                    session->entity == e && listener_.find(session->connection) != nullptr) {
+                    const auto* lock = world_.tryGet<Unrevivable>(e);
+                    if (lock && lock->active(clockMillis_)) {
+                        session->autoRespawnAtMillis = lock->untilMillis;
+                    } else {
+                        handleRespawn(*session);
+                    }
+                }
+                continue;
+            }
+            if (bot != nullptr && bot->deathAnnounced) continue;
         }
 
         if (world_.has<NetId>(e)) {
@@ -1216,7 +1228,7 @@ void GameServer::reapDead() {
 
         if (isPlayer) {
             if (session != nullptr) {
-                session->deathReported = true;
+                session->autoRespawnAtMillis = clockMillis_ + kAutoRespawnDelaySeconds * 1000.0;
                 // In the ring a death hands the run over to the killer before
                 // anything is written down.
                 if (session->arena) settleArenaDeath(*session, world_.get<Dead>(e).killer);
@@ -5836,6 +5848,10 @@ void GameServer::guildInviteToSquad(Session& session, net::Connection& connectio
 
 void GameServer::handleRespawn(Session& session) {
     if (!session.authenticated()) return;
+    if (session.playing() && world_.isAlive(session.entity)) {
+        const Health* health = world_.tryGet<Health>(session.entity);
+        if (health && health->alive()) return;
+    }
     // A lent console is lent for one life. Dropping it here rather than on
     // death means the grantee keeps it while they are looking at the death
     // card, which is where the reference leaves it too.
@@ -5847,8 +5863,6 @@ void GameServer::handleRespawn(Session& session) {
     Realm corpseRealm = Realm::Overworld;
     Vec2 corpsePos{};
     if (session.playing() && world_.isAlive(session.entity)) {
-        Health* health = world_.tryGet<Health>(session.entity);
-        if (health && health->alive()) return;   // not actually dead
         if (const Transform* corpse = world_.tryGet<Transform>(session.entity)) {
             corpseKnown = true;
             corpseRealm = corpse->realm;
@@ -5910,11 +5924,8 @@ void GameServer::onPlayerRevived(Entity revived, Entity reviver) {
     Session* session = sessionForEntity(revived);
     if (session == nullptr) return;
 
-    // The corpse's death has already been announced and the reaper has stopped
-    // looking at it. Clearing the flag is what lets this body die a second
-    // time: without it the next death is silent and the player is left standing
-    // as a corpse nobody told them about.
-    session->deathReported = false;
+    // An ally revived this body before the automatic respawn.
+    session->autoRespawnAtMillis = 0;
     net::Connection* connection = listener_.find(session->connection);
     if (connection == nullptr) return;
 
@@ -6039,7 +6050,7 @@ Entity GameServer::finishPlayerSpawn(Session& session, Realm realm, Vec2 spawn) 
     session.entity = entity;
     session.stage = SessionStage::Playing;
     // A fresh body has a death of its own still to announce.
-    session.deathReported = false;
+    session.autoRespawnAtMillis = 0;
     // And a fresh life owes nothing to the last one's losses: a splitter on
     // the bar cuts this body in two on the next tick.
     session.splitReadyAtMillis = 0;
@@ -6221,6 +6232,7 @@ void GameServer::despawnPlayer(Session& session, bool persist) {
     destroyBody(session.entity);
 
     session.entity = NULL_ENTITY;
+    session.autoRespawnAtMillis = 0;
     session.stage = SessionStage::Authenticated;
     views_[session.connection].reset();
     // Same reason as the spawn: the id this member was known by is gone, and a

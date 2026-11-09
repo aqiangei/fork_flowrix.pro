@@ -2,6 +2,7 @@
 
 #include "client/net_client.h"
 #include "client/interpolation.h"
+#include "client/ui/chat_i18n.h"
 #include "server/db.h"
 #include "server/game_server.h"
 #include "server/systems/mob_ai.h"
@@ -1304,6 +1305,45 @@ TEST(persist_all_writes_the_database_and_keeps_serving) {
     CHECK_EQ(h.server.persistAll(), std::size_t{1});
 }
 
+TEST(death_auto_respawns_near_the_corpse_without_a_continue_request) {
+    Harness h("auto-respawn", {}, flix::testsupport::dataDir(), 0);
+    if (!h.ready) { CHECK(false); return; }
+    NetClient client;
+    CHECK(flix::testsupport::loginNew(h, client, "alice", "password1"));
+    client.joinGame(1280, 720, {}, "alice");
+    CHECK(h.stepUntil({&client}, [&] { return client.status() == NetClient::Status::Playing; }));
+
+    World& world = h.server.world();
+    const Entity body = onlyPlayer(world);
+    CHECK(body != NULL_ENTITY);
+    if (body == NULL_ENTITY) return;
+    const Transform corpse = world.get<Transform>(body);
+    world.get<Health>(body).current = 0;
+    world.add<Dead>(body, Dead{NULL_ENTITY});
+    h.step(1, {&client});
+    const double reportedAt = h.clock;
+    CHECK(h.stepUntil({&client}, [&] { return client.dead(); }));
+
+    h.clock = reportedAt + kAutoRespawnDelaySeconds * 1000.0 - 2 * net::kTickMillis;
+    h.step(1, {&client});
+    CHECK(client.dead());
+    CHECK_EQ(onlyPlayer(world), body);
+
+    CHECK(h.stepUntil({&client}, [&] { return client.revived && !client.dead(); }, 20));
+    const Entity reborn = onlyPlayer(world);
+    CHECK(reborn != NULL_ENTITY && reborn != body);
+    if (reborn == NULL_ENTITY) return;
+    CHECK(world.get<Transform>(reborn).realm == corpse.realm);
+    CHECK(distanceSq(world.get<Transform>(reborn).position, corpse.position) < 800.0 * 800.0);
+    CHECK(world.get<Health>(reborn).alive());
+    CHECK(!world.isAlive(body));
+
+    // A Continue packet arriving after the timeout cannot create another body.
+    client.requestRespawn();
+    h.step(5, {&client});
+    CHECK_EQ(onlyPlayer(world), reborn);
+}
+
 TEST(a_yggdrasil_revival_takes_the_death_screen_back_down) {
     // Bots are off: they carry yggdrasil for each other and path to any corpse
     // they can reach, so with them running the revive under test could be one
@@ -1367,9 +1407,10 @@ TEST(a_yggdrasil_revival_takes_the_death_screen_back_down) {
     // death card down; without it the screen stays up over a body that is
     // alive and the player cannot move.
     CHECK(alice.revived);
+    const std::string revivalLine = ui::localizeChatText("You were revived by bob.");
     bool sawLine = false;
     for (const ChatLine& line : alice.chat()) {
-        if (line.text == "You were revived by bob.") sawLine = true;
+        if (line.text == revivalLine) sawLine = true;
     }
     CHECK(sawLine);
 
@@ -1385,6 +1426,11 @@ TEST(a_yggdrasil_revival_takes_the_death_screen_back_down) {
         h.step(1, {&alice, &bob});
     }
     CHECK(distance(world.get<Transform>(aliceBody).position, before) > 50.0);
+
+    // The old death's deadline cannot replace the body that Bob raised.
+    h.clock += kAutoRespawnDelaySeconds * 1000.0;
+    h.step(1, {&alice, &bob});
+    CHECK(world.isAlive(aliceBody));
 }
 
 TEST(a_flower_its_bandage_let_die_stays_down_until_the_lock_runs_out) {
