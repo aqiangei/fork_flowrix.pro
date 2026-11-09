@@ -298,8 +298,8 @@ Rarity LootSystem::finishDropRarity(Rarity baseRarity, Rarity mobRarity, Rng& rn
         const int floor = mobTier >= rarityIndex(Rarity::Epic) ? mobTier - 2 : mobTier - 1;
         if (rarityIndex(base) < floor) base = clampRarity(floor);
     }
-    // The regular batch is capped at unique. The Apex bonus is awarded once
-    // per eligible kill in awardDeaths.
+    // The regular batch is capped at unique. The Apex bonus rolls separately
+    // once per eligible kill in awardDeaths.
     if (mobRarity == Rarity::Apex && base == Rarity::Apex) base = Rarity::Unique;
     return base;
 }
@@ -703,9 +703,9 @@ void LootSystem::awardDeaths(World& world, const ContentRegistry& content, Rng& 
             }
         }
 
-        if (mobRarity == Rarity::Apex) {
-            // One bonus outside the regular ten-copy batch and magic orb
-            // conversion, so eligible players always have an Apex to claim.
+        if (mobRarity == Rarity::Apex && rng.chance(kApexBonusDropChance)) {
+            // At most one bonus per kill, outside the ten-copy batch and
+            // magic orb conversion.
             std::uint16_t petal = selected_.empty() ? kNoPetal : selected_[featured]->petalIndex;
             if (petal == kNoPetal || !petalComesAt(content.petal(petal), Rarity::Apex)) {
                 petal = tables_.randomPetal(rng, Rarity::Apex);

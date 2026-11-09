@@ -622,6 +622,8 @@ constexpr ChangelogEntry kChangelog[] = {
       "点击继续仍可立即复活"}},
     {"2026年11月9日（Apex 掉落）",
      {"击败 Apex 怪物后，符合拾取条件的玩家可额外领取 1 个 Apex 花瓣"}},
+    {"2026年11月9日（Apex 掉落平衡）",
+     {"每只 Apex 怪独立判定，20% 概率额外掉落 1 个 Apex 花瓣"}},
 };
 
 constexpr int kEntryCount = static_cast<int>(sizeof(kChangelog) / sizeof(kChangelog[0]));

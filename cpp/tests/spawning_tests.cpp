@@ -3848,7 +3848,7 @@ TEST(a_worn_orb_converts_every_drop_that_has_a_magic_form) {
     CHECK(roots > 0);
 }
 
-TEST(an_eligible_apex_kill_adds_one_apex_petal_outside_the_regular_batch) {
+TEST(an_eligible_apex_kill_rolls_once_for_one_extra_apex_petal) {
     World world;
     CommandBuffer commands{world};
     SpatialGrid grid;
@@ -3858,29 +3858,44 @@ TEST(an_eligible_apex_kill_adds_one_apex_petal_outside_the_regular_batch) {
     const Entity player = makePlayer(world, kCentre + Vec2{5000, 0});
     wear(world, player, "magic_orb", Rarity::Common);
     const auto leafbug = shipped().mobIndex("leafbug");
-    const Entity corpse = makeCorpse(world, leafbug, Rarity::Apex, kCentre, player, {player});
-    makeCorpse(world, leafbug, Rarity::Apex, kCentre, player, {});
-
-    loot.run(world, grid, shipped(), rng, 1000.0, net::kTickSeconds, commands, events);
-    commands.flush();
-    const auto drops = liveDrops(world);
     const auto regular = shippedTables().guaranteedForMob(leafbug).size() * 10;
-    CHECK_EQ(drops.size(), regular + 1);
-    int bonus = 0;
-    for (const Entity drop : drops) {
-        const DropItem& item = world.get<DropItem>(drop);
-        if (item.rarity != Rarity::Apex) continue;
-        ++bonus;
-        CHECK(LootSystem::mayPickUp(item, player, 0));
-        CHECK(!shipped().isMagicForm(item.configIndex));
-    }
-    CHECK_EQ(bonus, 1);
-    CHECK(world.has<LootAwarded>(corpse));
+    double now = 1000.0;
+    const auto tick = [&] {
+        loot.run(world, grid, shipped(), rng, now, net::kTickSeconds, commands, events);
+        commands.flush();
+        now += net::kTickMillis;
+    };
 
-    loot.run(world, grid, shipped(), rng, 1000.0 + net::kTickMillis,
-             net::kTickSeconds, commands, events);
-    commands.flush();
-    CHECK_EQ(liveDrops(world).size(), drops.size());
+    constexpr int kKills = 1000;
+    int bonuses = 0;
+    for (int i = 0; i < kKills; ++i) {
+        const Entity corpse = makeCorpse(world, leafbug, Rarity::Apex, kCentre, player, {player});
+        tick();
+        const auto drops = liveDrops(world);
+        std::size_t bonus = 0;
+        for (const Entity drop : drops) {
+            const DropItem& item = world.get<DropItem>(drop);
+            if (item.rarity != Rarity::Apex) continue;
+            ++bonus;
+            CHECK(LootSystem::mayPickUp(item, player, 0));
+            CHECK(!shipped().isMagicForm(item.configIndex));
+        }
+        CHECK(bonus <= 1);
+        CHECK_EQ(drops.size(), regular + bonus);
+        CHECK(world.has<LootAwarded>(corpse));
+        if (bonus > 0) {
+            ++bonuses;
+            tick();
+            CHECK_EQ(liveDrops(world).size(), drops.size());
+        }
+        for (const Entity drop : drops) world.destroy(drop);
+        world.destroy(corpse);
+    }
+    CHECK_NEAR(static_cast<double>(bonuses) / kKills, 0.20, 0.035);
+
+    makeCorpse(world, leafbug, Rarity::Apex, kCentre, player, {});
+    tick();
+    CHECK(liveDrops(world).empty());
 }
 
 TEST(a_common_orb_gatekeeps_every_conversion_to_common) {

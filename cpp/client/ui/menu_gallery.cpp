@@ -95,7 +95,7 @@ constexpr double kIconInset = kCellRim * 0.5 + 2.0;
 /// puts one in the world now and then, and it is the rarest cell on the
 /// sheet. Universal is above the ladder, and no mob is ever that.
 ///
-/// The regular drop table stops at unique. The guaranteed Apex bonus is
+/// The regular drop table stops at unique. The Apex bonus roll is
 /// listed separately in the mob tooltip.
 constexpr int kTierColumns = kLadderRarityCount;
 constexpr int kDropTiers = kLadderRarityCount - 1;
@@ -822,7 +822,8 @@ bool GalleryPanel::render(MenuContext& ctx) {
         stat("Speed: " + fixedDecimals(mobRows().speed[cell.mobIndex], 2), 0.0);
         stat("XP: " + abbreviateNumber(stats.xp), 0.0);
         if (cell.rarity == Rarity::Apex) {
-            stat(trEnZh("Guaranteed bonus: 1 Apex petal", "保底额外掉落 1 个顶点花瓣"),
+            const std::string odds = fixedDecimals(kApexBonusDropChance * 100.0, 0) + "%";
+            stat(odds + trEnZh(" chance for 1 extra Apex petal", " 概率额外掉落 1 个顶点花瓣"),
                  4.0, rarityColor(Rarity::Apex));
         }
 

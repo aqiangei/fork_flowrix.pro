@@ -341,6 +341,9 @@ inline double petalEvasionScale(double authored, Rarity r) {
 // Crafting and drop rolls
 // ---------------------------------------------------------------------------
 
+/// One extra Apex petal may drop per eligible Apex kill.
+inline constexpr double kApexBonusDropChance = 0.20;
+
 /// Original rarity ladder retained by loot promotion and downgrade rolls.
 inline double lootRarityChance(Rarity from) {
     return 0.64 / std::pow(2.0, rarityIndex(from));
