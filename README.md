@@ -1,45 +1,38 @@
-# flowrix ![florr](img/splitter_small.svg)
+# Flowrix Beta
 
-[florr.io](https://florr.io) clone
+Flowrix Beta 是一个以 [florr.io](https://florr.io) 为灵感的多人花瓣战斗游戏。探索不同生态区，击败怪物收集花瓣，通过合成、配装和天赋强化角色。
 
-[Public Server](https://florrclone.cryodome.com)
+## 在线游玩
 
-[Discord](https://discord.com/invite/SvAYCGsmAg)
+- [进入 Flowrix Beta](http://154.219.105.161/)
+- [留言板与修复进度](https://ashflor.com/feedback.html?v=prog5#progress-title)
 
-**If the game is blocked at your school, try using
-[https://florrclone.cryodome.com:3000](https://florrclone.cryodome.com:3000),
-click advanced options and continue to site.**
+## 本地运行
 
-![Title Screen](img/title_screen.png)
+仓库包含已构建的 Web 客户端和服务端。安装 Node.js 后，在仓库根目录启动服务。
 
-> **License notice:** As of October 2026 this project is licensed under the
-> [GNU Affero General Public License v3.0 or later](LICENSE) (previously GPL v3
-> or later, and before that ISC), because it contains code adapted from gardn:
-> [trigonal-bacon/gardn](https://github.com/trigonal-bacon/gardn)
-
-[public server](https://florrclone.cryodome.com).
-
-## Local server:
-
-Run
-```bash
-npm run start_nobuild
+```sh
+node dist/server.js --port 3000 --db dist/inventory.json --web-root dist
 ```
-to run from dist folder
-open <http://localhost:3000>.
 
-**Like the game? Star the GitHub repository!**
+启动后打开 [http://localhost:3000](http://localhost:3000)。本地账号与存档保存在 `dist/inventory.json`。
 
-## License
+## 从源码构建
+
+Web 客户端与服务端都使用 C++，通过 Emscripten 编译为 WebAssembly。安装 Node.js、CMake 和 Emscripten SDK，确保 `emcc` 与 `emcmake` 可用，然后在仓库根目录构建。
+
+```sh
+npm run build
+```
+
+构建产物写入 `dist/`。修改花瓣、怪物、掉落或地图数据后，客户端和服务端需要一起重新构建和发布。
+
+- [引擎与网络架构](cpp/docs/ARCHITECTURE.md)
+- [地图编辑指南](maps/README.md)
+- [上游仓库](https://github.com/flowrix-io/florr_clone)
+
+## 许可证
 
 Copyright (c) 2026 sussybite8888
 
-This program is free software: you can redistribute it and/or modify it under
-the terms of the GNU Affero General Public License as published by the Free
-Software Foundation, either version 3 of the License, or (at your option) any
-later version. See [LICENSE](LICENSE) for the full text.
-
-This program is distributed in the hope that it will be useful, but WITHOUT
-ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
-FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more
-details.
+本项目按 [GNU Affero General Public License v3.0 or later](LICENSE) 发布，包含改编自 [trigonal-bacon/gardn](https://github.com/trigonal-bacon/gardn) 的代码。

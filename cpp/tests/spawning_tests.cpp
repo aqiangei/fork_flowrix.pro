@@ -3349,7 +3349,7 @@ TEST(a_mob_leaves_its_own_rarity_at_the_balanced_drop_rate) {
         CHECK_NEAR(own / double(kRuns), c.ownTier * 1.15, std::max(0.0005, c.ownTier * 0.05));
     }
 
-    // Apex is the one tier that cannot leave its own rarity at all.
+    // Regular rolls still cap at unique. The Apex bonus is awarded separately.
     int apex = 0;
     for (int i = 0; i < kRuns; ++i) {
         if (LootSystem::rollDropRarity(Rarity::Common, Rarity::Apex, rng) == Rarity::Apex) ++apex;
@@ -3846,6 +3846,41 @@ TEST(a_worn_orb_converts_every_drop_that_has_a_magic_form) {
     }
     CHECK_EQ(magic, 40);
     CHECK(roots > 0);
+}
+
+TEST(an_eligible_apex_kill_adds_one_apex_petal_outside_the_regular_batch) {
+    World world;
+    CommandBuffer commands{world};
+    SpatialGrid grid;
+    ShippedLoot loot;
+    EventQueue events;
+    Rng rng(42);
+    const Entity player = makePlayer(world, kCentre + Vec2{5000, 0});
+    wear(world, player, "magic_orb", Rarity::Common);
+    const auto leafbug = shipped().mobIndex("leafbug");
+    const Entity corpse = makeCorpse(world, leafbug, Rarity::Apex, kCentre, player, {player});
+    makeCorpse(world, leafbug, Rarity::Apex, kCentre, player, {});
+
+    loot.run(world, grid, shipped(), rng, 1000.0, net::kTickSeconds, commands, events);
+    commands.flush();
+    const auto drops = liveDrops(world);
+    const auto regular = shippedTables().guaranteedForMob(leafbug).size() * 10;
+    CHECK_EQ(drops.size(), regular + 1);
+    int bonus = 0;
+    for (const Entity drop : drops) {
+        const DropItem& item = world.get<DropItem>(drop);
+        if (item.rarity != Rarity::Apex) continue;
+        ++bonus;
+        CHECK(LootSystem::mayPickUp(item, player, 0));
+        CHECK(!shipped().isMagicForm(item.configIndex));
+    }
+    CHECK_EQ(bonus, 1);
+    CHECK(world.has<LootAwarded>(corpse));
+
+    loot.run(world, grid, shipped(), rng, 1000.0 + net::kTickMillis,
+             net::kTickSeconds, commands, events);
+    commands.flush();
+    CHECK_EQ(liveDrops(world).size(), drops.size());
 }
 
 TEST(a_common_orb_gatekeeps_every_conversion_to_common) {

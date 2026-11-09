@@ -95,9 +95,8 @@ constexpr double kIconInset = kCellRim * 0.5 + 2.0;
 /// puts one in the world now and then, and it is the rarest cell on the
 /// sheet. Universal is above the ladder, and no mob is ever that.
 ///
-/// The drop table stops a tier short. An apex mob's graded drop is capped at
-/// unique (LootSystem::finishDropRarity), and no lesser mob grades past it,
-/// so an apex column there would always be empty.
+/// The regular drop table stops at unique. The guaranteed Apex bonus is
+/// listed separately in the mob tooltip.
 constexpr int kTierColumns = kLadderRarityCount;
 constexpr int kDropTiers = kLadderRarityCount - 1;
 
@@ -822,6 +821,10 @@ bool GalleryPanel::render(MenuContext& ctx) {
         // a flower's top speed, so two places: a bee is 0.1, a fly 0.48.
         stat("Speed: " + fixedDecimals(mobRows().speed[cell.mobIndex], 2), 0.0);
         stat("XP: " + abbreviateNumber(stats.xp), 0.0);
+        if (cell.rarity == Rarity::Apex) {
+            stat(trEnZh("Guaranteed bonus: 1 Apex petal", "保底额外掉落 1 个顶点花瓣"),
+                 4.0, rarityColor(Rarity::Apex));
+        }
 
         std::array<bool, kDropTiers> usedTiers{};
         const std::vector<DropRow> rows = computeMobDrops(cell.mobIndex, cell.rarity, usedTiers);
