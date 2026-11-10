@@ -1875,7 +1875,8 @@ PetalStats buildPetalStats(const PetalConfig& c, Rarity r) {
     if (c.lightningRepeatChance > 0.0) {
         const int rank = ladderIndex(tier);
         s.lightningRepeatChance = std::min(0.95, c.lightningRepeatChance + 0.03 * rank);
-        s.maxLightningRepeats = 2 + rank / 3;
+        s.maxLightningRepeats = rank == ladderIndex(Rarity::Apex)
+                                    ? kApexRubyMaxLightningRepeats : 2 + rank / 3;
     }
     s.reloadMillis = c.cooldownMillis;
     if (c.id == "yggdrasil") {

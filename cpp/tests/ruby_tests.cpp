@@ -112,7 +112,7 @@ TEST(ruby_rarity_stats_and_fixed_and_random_drops_are_available) {
         CHECK(stats.health > 0);
         CHECK(stats.lightningRepeatChance >= previous);
         CHECK(stats.lightningRepeatChance <= 0.95);
-        CHECK_EQ(stats.maxLightningRepeats, 2 + tier / 3);
+        CHECK_EQ(stats.maxLightningRepeats, tier == rarityIndex(Rarity::Apex) ? 7 : 2 + tier / 3);
         previous = stats.lightningRepeatChance;
     }
     CHECK_NEAR(registry.petalStats(ruby, Rarity::Common).lightningRepeatChance, 0.8, 1e-9);
@@ -132,12 +132,15 @@ TEST(ruby_rarity_stats_and_fixed_and_random_drops_are_available) {
     for (auto index : drops.droppablePetals()) random = random || index == ruby;
     CHECK(random);
 }
-TEST(ruby_buff_supports_five_extra_hits_and_cutter_has_two_sources) {
+TEST(apex_ruby_allows_seven_extra_hits_and_clamps_the_combat_limit) {
     RubyArena arena;
     auto& mods = arena.world.get<PlayerModifiers>(arena.player);
     mods.lightningRepeatChance = 1;
-    mods.maxLightningRepeats = 5;
-    CHECK_NEAR(arena.hit().applied, 60, 1e-9);
+    mods.maxLightningRepeats = 9;
+    CHECK_NEAR(arena.hit().applied, 80, 1e-9);
+}
+
+TEST(cutter_has_two_drop_sources) {
     const auto& registry = testsupport::shippedContent();
     const auto cutter = registry.petalIndex("cutter");
     CHECK(cutter != kInvalidIndex);

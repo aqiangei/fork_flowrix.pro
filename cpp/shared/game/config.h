@@ -1098,6 +1098,7 @@ inline constexpr int kBatteryCharges = 3;
 inline constexpr double kBatteryStrikeIntervalMillis = 500.0;
 inline constexpr double kLightningFallbackDamage = 25.0;
 inline constexpr double kLightningRadius = 1000.0;
+inline constexpr int kApexRubyMaxLightningRepeats = 7;
 inline constexpr double kFlowerCorruptChance = 0.05;
 inline constexpr int kFlowerPetCount = 3;
 
