@@ -1541,14 +1541,15 @@ TEST(capacitor_boosts_lightning_and_ruby_repeats_with_only_the_best_active_tier)
     rig.freezeRing();
     rig.settleEquips();
     rig.settleRing();
-    CHECK_NEAR(rig.modifiers().lightningPetalDamageScale, 1.28, 1e-9);
-    CHECK_NEAR(capacitorLightningBonus(Rarity::Apex), 0.38, 1e-9);
+    CHECK_NEAR(rig.modifiers().lightningPetalDamageScale, 1.47, 1e-9);
+    CHECK_NEAR(capacitorLightningBonus(Rarity::Apex), 0.87, 1e-9);
+    CHECK_NEAR(capacitorLightningBonus(Rarity::Universal), 1.20, 1e-9);
 
     const Vec2 orbit = rig.position(rig.petals(0).front());
     const Entity mob = addMob(rig, {orbit.x + 2.0, orbit.y});
     CHECK(rig.tickUntil([&] { return countStrikes(rig) == 1; }, 60));
     const auto& content = fixture().registry;
-    const double damage = content.petalStats(petalId("lightning"), Rarity::Common).damage * 1.28;
+    const double damage = content.petalStats(petalId("lightning"), Rarity::Common).damage * 1.47;
     CHECK_NEAR(lastStrikeDamage(rig), damage, 1e-9);
 
     // Resolve the actual burst with one guaranteed Ruby repeat. Both hits
@@ -1565,7 +1566,7 @@ TEST(capacitor_boosts_lightning_and_ruby_repeats_with_only_the_best_active_tier)
 
     rig.unequip(2);
     rig.tick();
-    CHECK_NEAR(rig.modifiers().lightningPetalDamageScale, 1.20, 1e-9);
+    CHECK_NEAR(rig.modifiers().lightningPetalDamageScale, 1.15, 1e-9);
     rig.unequip(1);
     rig.tick();
     CHECK_NEAR(rig.modifiers().lightningPetalDamageScale, 1.0, 1e-9);

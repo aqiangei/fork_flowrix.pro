@@ -2116,8 +2116,42 @@ TEST(hel_has_open_band_ground_to_lay_a_sacrifice_on) {
         Vec2 at;
         CHECK(sim.spawner.randomBandPoint(sim.terrain, hel, sim.rng, at));
         CHECK(!sim.terrain.blocked(at, hel));
-        CHECK(sim.spawner.difficultyAt(hel, at) == kRandomDifficulty);
+        const double difficulty = sim.spawner.difficultyAt(hel, at);
+        CHECK(difficulty == kRandomDifficulty || difficulty >= 160.0);
     }
+}
+
+TEST(hel_apex_band_fills_two_boss_slots_as_its_supers_are_cleared) {
+    Sim sim;
+    WorldMaps maps;
+    std::string error;
+    const bool loaded = maps.load(testsupport::dataDir(), &sim.terrain, error);
+    CHECK(loaded);
+    if (!loaded) return;
+    bool found = false;
+    const Realm hel = maps.realmOfId("hel", found);
+    CHECK(found);
+    if (!found) return;
+    sim.spawner.worldMaps = &maps;
+
+    int apex = 0;
+    Query<MobTag, MobType, Transform> mobs{sim.world};
+    for (int pass = 0; pass < 8; ++pass) {
+        sim.jump(kPopulationIntervalMillis, {});
+        apex = 0;
+        std::vector<Entity> supers;
+        mobs.each([&](Entity e, MobTag&, MobType& type, Transform& at) {
+            if (at.realm != hel) return;
+            if (type.rarity == Rarity::Super) supers.push_back(e);
+            if (type.rarity == Rarity::Apex) {
+                ++apex;
+                CHECK(sim.spawner.difficultyAt(hel, at.position) >= 160.0);
+            }
+        });
+        CHECK(apex <= 2);
+        for (const Entity mob : supers) sim.world.destroy(mob);
+    }
+    CHECK_EQ(apex, 2);
 }
 
 TEST(the_kernel_guardian_has_one_spawn_in_the_plain_computer) {

@@ -627,6 +627,9 @@ constexpr ChangelogEntry kChangelog[] = {
     {"2026年11月10日（电容器重做）",
      {"电容器改为装备后常驻提高闪电花瓣的电击伤害，Ruby 连击也享受增伤",
       "Common 增伤 20%，每升一阶加 2 个百分点，Apex 增伤 38%；多个电容器取最高值"}},
+    {"2026年11月10日（Hel 与电容器平衡）",
+     {"Hel 东南新增高阶刷怪区，可自然刷新 Apex，血祭刷新间隔上限从 24 小时缩短至 8 小时",
+      "电容器 Common 增伤 15%，每阶加 8 个百分点，Apex 87%，Universal 120%"}},
 };
 
 constexpr int kEntryCount = static_cast<int>(sizeof(kChangelog) / sizeof(kChangelog[0]));

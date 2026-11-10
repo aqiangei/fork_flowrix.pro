@@ -170,6 +170,20 @@
          "name":"spawns",
          "objects":[
                 {
+                 "height":2048,
+                 "id":3,
+                 "name":"hel apex zone",
+                 "properties":[
+                        {"name":"difficulty","type":"float","value":200},
+                        {"name":"mobs","type":"string","value":"hel"}],
+                 "rotation":0,
+                 "type":"",
+                 "visible":true,
+                 "width":2304,
+                 "x":11264,
+                 "y":11008
+                },
+                {
                  "height":0,
                  "id":2,
                  "name":"",
@@ -266,7 +280,7 @@
          "y":0
         }],
  "nextlayerid":5,
- "nextobjectid":3,
+ "nextobjectid":4,
  "orientation":"orthogonal",
  "renderorder":"right-down",
  "tiledversion":"1.10.1",

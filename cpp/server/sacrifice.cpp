@@ -6,7 +6,7 @@
 //
 //   * WHERE IT COMES FROM. Nothing drops it and nobody sells it. One Apex
 //     Sacrifice is put down on Hel's ground at a time, on a clock dealt
-//     uniformly from nothing to a day, without a word in chat. First human
+//     uniformly from zero to eight hours, without a word in chat. First human
 //     to walk over it keeps it; bots leave it alone.
 //   * WHAT IT DOES. A flower that dies with one on its active bar spends it:
 //     a mob of the band it fell in comes out where it fell, at the petal's
@@ -35,7 +35,7 @@ namespace {
 
 /// The longest wait between two of Hel's sacrifices. Each wait is dealt
 /// uniformly between zero and this.
-constexpr double kSacrificeSpawnMaxGapMillis = 24.0 * 60.0 * 60.0 * 1000.0;
+constexpr double kSacrificeSpawnMaxGapMillis = 8.0 * 60.0 * 60.0 * 1000.0;
 
 /// The map the sacrifice appears on, by id, and the tier it appears at.
 constexpr const char* kSacrificeMapId = "hel";

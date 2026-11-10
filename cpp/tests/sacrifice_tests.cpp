@@ -281,13 +281,13 @@ TEST(hel_lays_one_apex_sacrifice_on_its_clock_for_the_first_human_to_find) {
     alice.joinGame(1280, 720, {}, "alice");
     CHECK(h.stepUntil({&alice}, [&] { return alice.status() == NetClient::Status::Playing; }));
 
-    // A fresh server deals its first wait: never more than a day off.
+    // A fresh server deals its first wait: never more than eight hours off.
     const double dealt = GameServerPeer::sacrificeReadyMillis(h.server);
     CHECK(dealt >= 0.0);
     const Json& table = h.server.database().storedTable("sacrificeSpawn");
     CHECK(table.isObject() && table["readyAt"].isNumber());
     const double wallNow = static_cast<double>(h.server.database().nowMillis());
-    CHECK(table["readyAt"].asDouble() <= wallNow + 24.0 * 3600.0 * 1000.0 + 1000.0);
+    CHECK(table["readyAt"].asDouble() <= wallNow + 8.0 * 3600.0 * 1000.0 + 1000.0);
     CHECK(GameServerPeer::sacrificeDrop(h.server) == NULL_ENTITY);
 
     GameServerPeer::windSacrificeClock(h.server, 0.0);

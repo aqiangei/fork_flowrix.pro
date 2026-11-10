@@ -1103,7 +1103,8 @@ inline constexpr int kFlowerPetCount = 3;
 
 /// The strongest equipped capacitor boosts Lightning petal strikes.
 inline constexpr double capacitorLightningBonus(Rarity rarity) {
-    return 0.20 + 0.02 * ladderIndex(rarity);
+    if (rarityIndex(rarity) >= rarityIndex(Rarity::Universal)) return 1.20;
+    return 0.15 + 0.08 * ladderIndex(rarity);
 }
 
 /// A petal at one tier.
