@@ -1029,7 +1029,7 @@ void SpawnSystem::run(World& world, const Terrain& terrain, const ContentRegistr
     // half a second, and the first tick of a cold server is a full map.
     if (nowMillis >= nextPopulationMillis_) {
         nextPopulationMillis_ = nowMillis + kPopulationIntervalMillis;
-        cullExtraTopBosses(world, commands);
+        cullExtraTopBosses(world, commands, nowMillis);
         takeCensus(world, content, viewers_, nowMillis, commands);
         returnVanished(world, terrain, content, viewers_, rng, nowMillis);
         // The one ambient spawn path, and it runs whether or not anybody is
@@ -1819,18 +1819,35 @@ void SpawnSystem::markStanding(std::uint32_t biome, Rarity rarity) {
     if (rarity == Rarity::Unique) clock.uniqueStanding = true;
 }
 
-void SpawnSystem::cullExtraTopBosses(World& world, CommandBuffer& commands) {
-    // The extras culled below leave the first of each tier standing, so the
-    // flags this sets hold after the cull too.
+void SpawnSystem::cullExtraTopBosses(World& world, CommandBuffer& commands,
+                                     double nowMillis) {
     noteStandingBosses(world, commands);
-    if (topBosses_.size() < 2) return;
+    culled_.clear();
+    const auto shouldCull = [&](const TopBoss& boss) {
+        if (commands.destroying(boss.entity)) return true;
+        if (boss.rarity != Rarity::Apex) return false;
+        const Health* health = world.tryGet<Health>(boss.entity);
+        if (health == nullptr) return false;
+        auto& ambient = world.get<AmbientMob>(boss.entity);
+        if (ambient.lastApexHealth != health->current) {
+            ambient.lastApexHealth = health->current;
+            ambient.apexHealthChangedAtMillis = nowMillis;
+        }
+        if (nowMillis - ambient.apexHealthChangedAtMillis < kApexUnchangedHealthMillis) {
+            return false;
+        }
+        // This is a despawn: no killer, XP, loot or death spawns.
+        culled_.push_back(boss.entity);
+        return true;
+    };
+    topBosses_.erase(std::remove_if(topBosses_.begin(), topBosses_.end(), shouldCull),
+                     topBosses_.end());
 
     std::sort(topBosses_.begin(), topBosses_.end(), [](const TopBoss& a, const TopBoss& b) {
         if (a.biome != b.biome) return a.biome < b.biome;
         if (a.rarity != b.rarity) return rarityIndex(a.rarity) < rarityIndex(b.rarity);
         return a.order < b.order;
     });
-    culled_.clear();
     int count = 1;
     for (std::size_t i = 1; i < topBosses_.size(); ++i) {
         const TopBoss& first = topBosses_[i - 1];
@@ -2080,8 +2097,34 @@ bool SpawnSystem::stockZone(World& world, const Terrain& terrain, const ContentR
     // chosen with -- a super centipede brings ten of them. Refusing returns
     // the slot to the band, which tries again somewhere else on its next pass.
     const SpawnFootprint footprint = spawnFootprint(content, type, rarity);
-    const std::optional<double> facing =
-        wakingFacing(viewers, zone.realm, at, footprint, kMinSpawnDistance, rng);
+    std::optional<double> facing;
+    bool placedNearPlayer = false;
+    if (rarity == Rarity::Apex) {
+        const Viewer* viewer = nearestViewer(viewers, zone.realm, at);
+        if (viewer != nullptr) {
+            const double minDistance = viewer->radius + footprint.radius + kMinSpawnDistance;
+            for (int attempt = 0; attempt < 16; ++attempt) {
+                const Vec2 near = viewer->position +
+                    Vec2::fromAngle(rng.angle(), minDistance + rng.range(30.0, 750.0));
+                if (!zoneContains(zone.bounds, zone.polygon, near) ||
+                    inBorderBand(near, extent) || terrain.blocked(near, zone.realm) ||
+                    crowdedAt(zone.realm, near, footprint.radius, kMinMobSpawnSpacing, zone)) {
+                    continue;
+                }
+                const auto bearing =
+                    wakingFacing(viewers, zone.realm, near, footprint, kMinSpawnDistance, rng);
+                if (!clearOfEveryLap(viewers, zone.realm, near, footprint, bearing,
+                                     kMinSpawnDistance)) continue;
+                at = near;
+                facing = bearing;
+                placedNearPlayer = true;
+                break;
+            }
+        }
+    }
+    if (!placedNearPlayer) {
+        facing = wakingFacing(viewers, zone.realm, at, footprint, kMinSpawnDistance, rng);
+    }
     if (!clearOfEveryLap(viewers, zone.realm, at, footprint, facing, kMinSpawnDistance)) {
         return false;
     }

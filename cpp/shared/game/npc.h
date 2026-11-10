@@ -54,8 +54,7 @@ enum class NpcService : std::uint8_t {
     /// Any petal whose petals.json entry does not say `"tradable": false`.
     Trader,
     /// The universal forge: kTitanForgeCost apex petals of one kind for one
-    /// universal of it. A universal forged here lasts until another player
-    /// forges the same petal; see kTitanForgeRefund.
+    /// universal of it. If all three places are full, the oldest holder is refunded.
     Titan,
     /// Recipes: what a recipe takes for what it makes, every petal at the
     /// assembler's own tier. Each assembler offers ONE of its mob's
@@ -127,27 +126,20 @@ inline std::string traderCooldownText(double remainingMillis) {
 /// one universal of that kind. Never a roll -- the five always become one.
 inline constexpr int kTitanForgeCost = 5;
 
-/// What a universal's holder gets back when another player forges the same
-/// petal: the apex petals it was forged from, less the one the forge keeps.
-///
-/// Per universal taken, and every universal of that petal another account
-/// holds is taken -- bag and loadout alike, however it came by them -- so
-/// after a forge its forger is the only account holding that petal at
-/// universal.
+/// Up to three accounts may hold each Universal petal; the oldest yields
+/// their place when a new forge would exceed the limit.
+inline constexpr std::size_t kTitanHolderLimit = 3;
+
+/// What the displaced holder gets back per Universal, bag or loadout:
+/// the Apex petals it was forged from, less the one the forge keeps.
 inline constexpr int kTitanForgeRefund = kTitanForgeCost - 1;
 
 /// The least time between two answers to one session's TitanHolder query --
 /// each is a sweep of every account -- and how long the server trusts the
-/// holder it found for a petal before sweeping again. A forge sets its
-/// petal's answer outright, so only an operator's hand ages it at all.
+/// holders it found for a petal before sweeping again. A forge invalidates
+/// its petal's cached answer immediately.
 inline constexpr double kTitanHolderQueryMillis = 100.0;
 inline constexpr double kTitanHolderMemoMillis = 5000.0;
-
-/// What the titan says about a petal it has forged before, for whoever holds
-/// it now.
-inline std::string titanMemoryText(const std::string& holder) {
-    return "\"Ah, I remember forging that petal for a flower named " + holder + "...\"";
-}
 
 /// The most recipes one assembler's `npc.recipes` may list -- a recipe goes
 /// on the wire as a u8 index -- and the most different petals one recipe may

@@ -166,9 +166,8 @@ enum class ClientMessage : std::uint8_t {
                         ///< forged into one universal at a titan NPC. Never a
                         ///< roll. Found and reached exactly as OracleCraft's
                         ///< oracle is: the server looks for the titan itself.
-                        ///< Every other account's universal of that petal is
-                        ///< taken and refunded at kTitanForgeRefund apex
-                        ///< apiece. (Version 47.)
+                        ///< If full, the oldest holder is displaced and
+                        ///< refunded kTitanForgeRefund apex. (Version 47.)
     TitanHolder,        ///< u16 itemType -- who holds that petal at universal,
                         ///< for the titan to remember forging it for. Answered
                         ///< only to a flower standing at the titan, and at most
@@ -391,9 +390,9 @@ enum class ServerMessage : std::uint8_t {
                         ///< petal that was forged, or offered on a refusal;
                         ///< a success is always one universal of it. Its own
                         ///< reply for OracleResult's reason. (Version 47.)
-    TitanHolder,        ///< u16 itemType, str username -- the answer to
-                        ///< ClientMessage::TitanHolder: the account holding that
-                        ///< petal at universal, or empty for nobody. (Version 47.)
+    TitanHolder,        ///< u16 itemType, str names -- the answer to
+                        ///< ClientMessage::TitanHolder: comma-separated holder
+                        ///< names, or empty for nobody. (Version 47.)
     AdminDashboard,     ///< u8 AdminDashboardReply, then that reply's payload --
                         ///< the admin dashboard's answers, and the flower
                         ///< control state the server pushes whenever it starts

@@ -2,9 +2,8 @@
 //
 // What the craft key opens while the flower stands at the titan NPC (see
 // shared/game/npc.h): kTitanForgeCost apex petals of one kind in, one
-// universal of it out, every time. A universal forged here lasts until another
-// player forges the same petal, and then its holder gets the apex petals back
-// less the one the forge keeps -- which is what the card's three lines say.
+// universal of it out, every time. If all three places are filled, the
+// oldest holder gives up their petal and gets four Apex petals back.
 //
 // It is florr's forge window (menus.h, and its draw 0x1007fc530), in
 // charcoal: one slot holding the five apex petals, the Forge button, three
@@ -27,6 +26,7 @@
 #include <cstdint>
 #include <string>
 
+#include "client/ui/i18n.h"
 #include "client/ui/item_tile.h"
 #include "client/ui/menu_theme.h"
 #include "client/ui/menus.h"
@@ -55,11 +55,18 @@ constexpr double kGridPadding = 10.0;
 constexpr double kBodyTop = 53.6;
 constexpr double kFirstLineY = kBodyTop + 250.0 + 11.2;
 constexpr double kLinePitch = 22.4;
-constexpr std::array<const char*, 3> kLines = {
-    "Universal petals will last until another player forges the same petal.",
-    "When that happens, you will receive your Apex petals back,",
-    "but one will be permanently destroyed.",
-};
+constexpr std::size_t kLineCount = 3;
+
+std::array<const char*, kLineCount> forgeLines() {
+    if (language() == Language::Zh) {
+        return {"每种宇宙花瓣最多由 3 名玩家同时持有。",
+                "第 4 名玩家锻造时，最早持有者让出该花瓣。",
+                "每让出 1 个宇宙花瓣，退还 4 个顶点花瓣。"};
+    }
+    return {"Up to 3 players can hold each Universal petal.",
+            "When a fourth player forges it, the oldest holder gives up theirs.",
+            "The displaced holder gets 4 Apex petals back per copy."};
+}
 
 /// The forge's spin: toward 10 rad/s while it is out, easing both ways at
 /// the same rate; the least it spins before its answer shows is ours.
@@ -214,14 +221,15 @@ bool TitanPanel::render(MenuContext& ctx) {
     // it expires.
     if (refusal_.empty() || now >= refusalUntil_) {
         refusal_.clear();
-        for (std::size_t i = 0; i < kLines.size(); ++i) {
+        const auto lines = forgeLines();
+        for (std::size_t i = 0; i < lines.size(); ++i) {
             SlotCardLayout line = card;
             line.lineY = panel.y + kFirstLineY + kLinePitch * static_cast<double>(i);
-            drawSlotLine(canvas, line, kLines[i]);
+            drawSlotLine(canvas, line, lines[i]);
         }
     } else {
         SlotCardLayout line = card;
-        line.lineY = panel.y + kFirstLineY + kLinePitch * static_cast<double>(kLines.size() / 2);
+        line.lineY = panel.y + kFirstLineY + kLinePitch * static_cast<double>(kLineCount / 2);
         drawSlotLine(canvas, line, refusal_, kSlotCardRefusalInk);
     }
 
@@ -230,7 +238,8 @@ bool TitanPanel::render(MenuContext& ctx) {
     // answers: only it knows every account.
     if (knownPetal(askedPetal_)) {
         const std::string* holder = ctx.net.titanHolder(askedPetal_);
-        if (holder == nullptr && (askedAt_ < 0.0 || now - askedAt_ >= kHolderRetrySeconds)) {
+        const double refreshAfter = holder == nullptr ? kHolderRetrySeconds : 5.0;
+        if (askedAt_ < 0.0 || now - askedAt_ >= refreshAfter) {
             ctx.net.requestTitanHolder(askedPetal_);
             askedAt_ = now;
         }
@@ -239,7 +248,7 @@ bool TitanPanel::render(MenuContext& ctx) {
             const double linesTop = panel.y + kFirstLineY - kLinePitch * 0.5;
             SlotCardLayout line = card;
             line.lineY = (slotBottom + linesTop) * 0.5;
-            drawSlotLine(canvas, line, titanMemoryText(*holder));
+            drawSlotLine(canvas, line, (language() == Language::Zh ? "持有者：" : "Holders: ") + *holder);
         }
     }
 

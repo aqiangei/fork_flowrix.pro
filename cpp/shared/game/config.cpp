@@ -1788,7 +1788,8 @@ MobStats ContentRegistry::mobStats(std::uint16_t index, Rarity r) const {
     // `size` already carries the rarity step, so mass -- gardn's, off the
     // radius -- gets the rarity growth for free and a mythic shrugs off more
     // than a bee does, without becoming a wall.
-    const double scaledSize = c.size * kMobSizeScale[t];
+    // Apex keeps its existing aggro range, but takes up less room in narrow bands.
+    const double scaledSize = c.size * kMobSizeScale[t] * (tier == ladderIndex(Rarity::Apex) ? 0.85 : 1.0);
     s.health = c.health * kMobHealthScale[t];
     s.damage = c.damage * kMobDamageScale[t];
     s.armor = c.armor * kMobArmorScale[t];
@@ -1842,8 +1843,7 @@ MobStats ContentRegistry::mobStats(std::uint16_t index, Rarity r) const {
 namespace {
 
 PetalStats buildPetalStats(const PetalConfig& c, Rarity r) {
-    // Universal reads everything below at apex, `tier`, except health and
-    // damage, which take `strength` -- apex's times sqrt(2).
+    // Universal reads apex's utility, with a separate boost for damage riders.
     const Rarity graded = clampRarity(rarityIndex(r));
     const Rarity tier = ladderRarity(graded);
     const double strength = petalStrengthScale(graded == Rarity::Admin ? Rarity::Universal : graded);
@@ -1853,8 +1853,9 @@ PetalStats buildPetalStats(const PetalConfig& c, Rarity r) {
     const double mana = petalManaScale(tier);
 
     PetalStats s;
-    s.damage = c.damage * strength;
-    s.health = c.health * strength;
+    const double baseStrength = graded == Rarity::Universal ? stat : strength;
+    s.damage = c.damage * baseStrength;
+    s.health = c.health * baseStrength;
     // The plain 3x ladder, deliberately NOT kMobArmorScale: mob armour flattens
     // above ultra and a bur that flattened with it would be dead weight at the
     // three tiers where a raid actually needs one.
@@ -2070,7 +2071,13 @@ PetalStats buildPetalStats(const PetalConfig& c, Rarity r) {
     if (c.id == "antennae" && rarityIndex(tier) >= rarityIndex(Rarity::Rare)) {
         s.cameraZoom = 1.0 / antennaeVisionRangeScale(tier);
     }
-    // Admin starts with universal combat strength and apex utility, then
+    // Apply after fixed-stat overrides too, so every Universal petal has
+    // exactly five times the corresponding Apex base damage and health.
+    if (graded == Rarity::Universal) {
+        s.damage *= 5.0;
+        s.health *= 5.0;
+    }
+    // Admin starts with its legacy combat strength and apex utility, then
     // boosts the useful effects. Apply AFTER all named-petal overrides so
     // special petals receive the same treatment as ordinary ones.
     if (graded == Rarity::Admin) {

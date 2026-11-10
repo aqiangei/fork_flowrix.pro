@@ -19,6 +19,7 @@
 #include "client/camera.h"
 #include "client/render/sprites.h"
 #include "client/render/world_renderer.h"
+#include "client/ui/i18n.h"
 #include "client/ui/theme.h"
 #include "client/world_view.h"
 #include "fixture_content.h"
@@ -33,6 +34,12 @@ using namespace flix;
 using namespace flix::testsupport;
 
 namespace {
+
+struct EnglishChat {
+    ui::Language previous = ui::language();
+    EnglishChat() { ui::setLanguage(ui::Language::En); }
+    ~EnglishChat() { ui::setLanguage(previous); }
+};
 
 /// An account joinAs() below can log in: every one here shares its password.
 /// (seedStack, awaitProfile, bodyNamed, onlyPlayer and sawText are the harness's
@@ -2079,6 +2086,7 @@ TEST(the_shipped_titan_stands_in_the_jungle_wearing_a_universal_ring) {
 }
 
 TEST(a_titan_forge_turns_five_apex_into_one_universal) {
+    const EnglishChat language;
     const std::string dir = titanWorld("titan-forge");
     Harness h("titan-forge", [](const std::string& path) {
         seedAccount(path, "smith");
@@ -2109,8 +2117,7 @@ TEST(a_titan_forge_turns_five_apex_into_one_universal) {
     // universal grey, as each tier announces in its own colour.
     CHECK(h.stepUntil({&client}, [&] { return sawText(client, "Universal Rose has been forged by"); },
                       30));
-    // "The": there is only ever one of each petal at universal.
-    CHECK(sawText(client, "<b style=\"color: #555555;\">The Universal Rose has been forged by"));
+    CHECK(sawText(client, "<b style=\"color: #555555;\">A Universal Rose has been forged by"));
     removeDataDir(dir);
 }
 
@@ -2160,7 +2167,7 @@ TEST(the_titan_refuses_a_short_stack_and_a_flower_not_standing_at_it) {
     removeDataDir(dir);
 }
 
-TEST(a_forged_universal_is_taken_from_every_other_account_and_refunded_four_apex_apiece) {
+TEST(a_fourth_universal_holder_displaces_only_the_oldest_and_refunds_bag_and_loadout) {
     const std::string dir = titanWorld("titan-takeover");
     Harness h("titan-takeover", [](const std::string& path) {
         seedAccount(path, "smith");
@@ -2172,9 +2179,24 @@ TEST(a_forged_universal_is_taken_from_every_other_account_and_refunded_four_apex
         // Offline, holding three.
         seedAccount(path, "absent");
         seedStack(path, "absent", "petal_rose", Rarity::Universal, 3);
-        // A universal of another petal is nobody's business.
         seedAccount(path, "bystander");
+        seedStack(path, "bystander", "petal_rose", Rarity::Universal, 1);
         seedStack(path, "bystander", "petal_basic", Rarity::Universal, 1);
+
+        // The server opens this saved queue on startup. Its oldest holder is
+        // the rival regardless of the database's account iteration order.
+        Database db;
+        std::string error;
+        CHECK(db.load(path, error));
+        Json order = Json::array();
+        for (const char* username : {"rival", "absent", "bystander"}) {
+            const Account* holder = db.findUser(username);
+            CHECK(holder != nullptr);
+            if (holder != nullptr) order.push(holder->id);
+        }
+        db.rawTable("universalForgeOrder")["rose"] = std::move(order);
+        db.markDirty();
+        db.save();
     }, dir, 0);
     if (!h.ready) { CHECK(false); removeDataDir(dir); return; }
     const std::uint16_t rose = content().petalIndex("rose");
@@ -2207,12 +2229,12 @@ TEST(a_forged_universal_is_taken_from_every_other_account_and_refunded_four_apex
     CHECK(world.get<Loadout>(rivalBody).slots[0].empty());
     CHECK(h.stepUntil(both, [&] { return sawText(rival, "Another player forged the Universal Rose"); },
                       30));
-    // And the forger holds the one that is left.
+    // The new holder takes the vacant place.
     CHECK(awaitProfile(h, smith, [&](const Profile& p) {
         return p.stackCount(rose, Rarity::Universal) == 1u && p.stackCount(rose, Rarity::Apex) == 0u;
     }));
 
-    // The offline account's record has paid too, at four apex apiece.
+    // The other two holders keep their petals, and the order is persisted.
     const Database& db = h.server.database();
     const Account* absent = db.findUser("absent");
     const Account* bystander = db.findUser("bystander");
@@ -2222,9 +2244,18 @@ TEST(a_forged_universal_is_taken_from_every_other_account_and_refunded_four_apex
         const PlayerRecord* kept = db.findProgress(bystander->id);
         CHECK(gone != nullptr && kept != nullptr);
         if (gone != nullptr && kept != nullptr) {
-            CHECK_EQ(gone->itemCount(Rarity::Universal, "petal_rose"), 0);
-            CHECK_EQ(gone->itemCount(Rarity::Apex, "petal_rose"), 3 * kTitanForgeRefund);
+            CHECK_EQ(gone->itemCount(Rarity::Universal, "petal_rose"), 3);
+            CHECK_EQ(gone->itemCount(Rarity::Apex, "petal_rose"), 0);
+            CHECK_EQ(kept->itemCount(Rarity::Universal, "petal_rose"), 1);
             CHECK_EQ(kept->itemCount(Rarity::Universal, "petal_basic"), 1);
+            const Account* newcomer = db.findUser("smith");
+            const Json& order = db.storedTable("universalForgeOrder")["rose"];
+            CHECK_EQ(order.size(), std::size_t(3));
+            if (order.isArray() && order.size() == 3 && newcomer != nullptr) {
+                CHECK_EQ(order[0].asString(), absent->id);
+                CHECK_EQ(order[1].asString(), bystander->id);
+                CHECK_EQ(order[2].asString(), newcomer->id);
+            }
         }
     }
     removeDataDir(dir);
@@ -2284,9 +2315,6 @@ TEST(the_titan_will_not_forge_a_universal_the_forger_already_holds) {
 }
 
 TEST(the_titan_names_whoever_holds_a_petal_at_universal) {
-    CHECK_EQ(titanMemoryText("bob"),
-             std::string("\"Ah, I remember forging that petal for a flower named bob...\""));
-
     const std::string dir = titanWorld("titan-holder");
     Harness h("titan-holder", [](const std::string& path) {
         seedAccount(path, "smith");
@@ -2328,12 +2356,12 @@ TEST(the_titan_names_whoever_holds_a_petal_at_universal) {
     CHECK_EQ(ask(stinger), std::string());
     CHECK_EQ(ask(wing), std::string("keeper"));
 
-    // A forge moves the memory with the petal at once.
+    // A second forge updates the list without taking the first holder's petal.
     client.requestTitanForge(wing);
     TitanForgeOutcome outcome;
     CHECK(awaitForge(h, {&client}, client, outcome));
     CHECK(outcome.success);
-    CHECK_EQ(ask(wing), std::string("smith"));
+    CHECK_EQ(ask(wing), std::string("keeper, smith"));
 
     // Two at once: the second comes too soon and is dropped, and is answered
     // when asked again once the spacing has passed.
@@ -2349,7 +2377,8 @@ TEST(the_titan_names_whoever_holds_a_petal_at_universal) {
     removeDataDir(dir);
 }
 
-TEST(an_admins_universals_are_outside_the_one_of_each_rule) {
+TEST(an_admins_universals_are_outside_the_holder_queue) {
+    const EnglishChat language;
     const std::string dir = titanWorld("titan-admin");
     Harness h("titan-admin", [](const std::string& path) {
         // The admin holds a rose in the bag, wears a basic, and has the apex

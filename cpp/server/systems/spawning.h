@@ -101,6 +101,8 @@ struct AmbientMob {
     /// apexes): the later of them is the one that goes. A sequence rather
     /// than a time, because a band stocks dozens in one tick.
     std::uint64_t spawnOrder = 0;
+    double lastApexHealth = -1.0;
+    double apexHealthChangedAtMillis = 0.0;
 };
 
 /// A nest working through the escalating `spawn_waves` list in its config.
@@ -371,8 +373,9 @@ inline constexpr double kApexSpawnCooldownMillis = 0.0;
 inline constexpr double kBossUpgradeChance = 0.10;
 inline constexpr double kApexUpgradeChance = 0.20;
 inline constexpr double kSewerGarbageApexUpgradeChance = 0.30;
-inline constexpr int kApexBiomeLimit = 2;
-inline constexpr int kJellyfishZoneApexLimit = 3;
+inline constexpr int kApexBiomeLimit = 3;
+inline constexpr int kJellyfishZoneApexLimit = 4;
+inline constexpr double kApexUnchangedHealthMillis = 20.0 * 60.0 * 1000.0;
 
 /// The sacrifice (petalIsSacrifice): what a flower that dies wearing one
 /// summons, and where it will not.
@@ -899,7 +902,7 @@ private:
     /// Despawns every unique or apex that is not the FIRST of its tier in its
     /// biome, with its body if it has one. Destroyed, not killed: no loot and
     /// no XP for a mob that should never have been there.
-    void cullExtraTopBosses(World& world, CommandBuffer& commands);
+    void cullExtraTopBosses(World& world, CommandBuffer& commands, double nowMillis);
 
     /// Sets `biome`'s standing flag for `rarity` (unique or apex); nothing for
     /// a key past every clock slot or any other tier.

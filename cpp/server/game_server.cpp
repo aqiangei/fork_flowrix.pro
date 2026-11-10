@@ -3401,13 +3401,21 @@ void GameServer::handleTitanForge(Session& session, net::Connection& connection,
     std::printf("[TITAN] %s forged a universal %s%s\n", session.username.c_str(),
                 content().petal(petalIndex).id.c_str(), tracked ? "" : " (admin, untracked)");
 
-    // The forger's account is now the one place a universal of it may be,
-    // and the titan remembers it there. An admin's is outside the rule: the
-    // player who holds the real one keeps it, the titan still names them,
-    // and nobody is told "The Universal" changed hands.
+    // The new holder joins at the back; only the oldest loses theirs when
+    // the three places fill up. Database admins stay outside this queue.
     if (tracked) {
-        takeUniversals(petalIndex, session.userId);
-        universalHolders_[petalIndex] = HolderMemo{session.username, clockMillis_};
+        auto holders = universalHolderOrder(petalIndex);
+        holders.erase(std::remove(holders.begin(), holders.end(), session.userId), holders.end());
+        holders.push_back(session.userId);
+        const std::size_t displaced = holders.size() > kTitanHolderLimit
+            ? holders.size() - kTitanHolderLimit : 0;
+        for (std::size_t i = 0; i < displaced; ++i) {
+            reclaimUniversal(petalIndex, holders[i]);
+        }
+        Json order = Json::array();
+        for (std::size_t i = displaced; i < holders.size(); ++i) order.push(holders[i]);
+        database_.rawTable("universalForgeOrder")[content().petal(petalIndex).id] = std::move(order);
+        universalHolders_.erase(petalIndex);
         announceRareCraft(session, petalIndex, Rarity::Universal);
     }
 
@@ -3449,90 +3457,93 @@ bool GameServer::tracksUniversals(const std::string& userId) const {
     return account == nullptr || !account->admin;
 }
 
+std::vector<std::string> GameServer::universalHolderOrder(std::uint16_t petalIndex) const {
+    std::vector<std::string> legacy;
+    for (const std::string& userId : database_.playerIds()) {
+        const PlayerRecord* record = database_.findProgress(userId);
+        if (record != nullptr && holdsUniversal(*record, petalIndex) && tracksUniversals(userId)) {
+            legacy.push_back(userId);
+        }
+    }
+
+    // Pre-queue holdings are oldest. Stable account IDs break ties where the
+    // old save never stored who forged first. Only current holdings count.
+    std::sort(legacy.begin(), legacy.end());
+    std::vector<std::string> known;
+    const Json& order = database_.storedTable("universalForgeOrder")[content().petal(petalIndex).id];
+    if (order.isArray()) {
+        for (const Json& entry : order.items()) {
+            if (!entry.isString()) continue;
+            const auto found = std::find(legacy.begin(), legacy.end(), entry.stringRef());
+            if (found == legacy.end()) continue;
+            known.push_back(*found);
+            legacy.erase(found);
+        }
+    }
+    legacy.insert(legacy.end(), known.begin(), known.end());
+    return legacy;
+}
+
 std::string GameServer::universalHolderName(std::uint16_t petalIndex) {
     const auto memo = universalHolders_.find(petalIndex);
     if (memo != universalHolders_.end() &&
         clockMillis_ - memo->second.atMillis < kTitanHolderMemoMillis) {
-        return memo->second.username;
+        return memo->second.names;
     }
-    // A forge leaves one holder; an operator's `give` can leave more, and then
-    // any of them is a flower the titan forged it for as far as it can tell.
-    std::string holder;
-    for (const std::string& userId : database_.playerIds()) {
-        const PlayerRecord* record = database_.findProgress(userId);
-        if (record == nullptr || !holdsUniversal(*record, petalIndex)) continue;
+    std::string names;
+    for (const std::string& userId : universalHolderOrder(petalIndex)) {
         const Account* account = std::as_const(database_).findUserById(userId);
-        if (account == nullptr || account->admin) continue;
-        holder = account->username;
-        break;
+        if (account == nullptr) continue;
+        if (!names.empty()) names += ", ";
+        names += account->username;
     }
-    universalHolders_[petalIndex] = HolderMemo{holder, clockMillis_};
-    return holder;
+    universalHolders_[petalIndex] = HolderMemo{names, clockMillis_};
+    return names;
 }
 
-int GameServer::takeUniversals(std::uint16_t petalIndex, const std::string& keeperId) {
-    if (petalIndex >= content().petalCount()) return 0;
+void GameServer::reclaimUniversal(std::uint16_t petalIndex, const std::string& userId) {
     const PetalConfig& petal = content().petal(petalIndex);
     const std::string key = inventoryKey(petalIndex);
 
-    // Found with the read-only lookup and changed through progress() only
-    // where there is something to take, so the sweep costs no row its cached
-    // text (see Database::playerIds).
-    std::vector<std::string> holders;
-    for (const std::string& userId : database_.playerIds()) {
-        if (userId == keeperId) continue;
-        const PlayerRecord* record = database_.findProgress(userId);
-        if (record != nullptr && holdsUniversal(*record, petalIndex) &&
-            tracksUniversals(userId)) {
-            holders.push_back(userId);
+    PlayerRecord& record = database_.progress(userId);
+    const int bagged = record.itemCount(Rarity::Universal, key);
+    record.addItem(Rarity::Universal, key, -bagged);
+    // Wide: a stack runs to kMaxStackCount, and four apex for each of
+    // those does not fit an int.
+    std::int64_t lost = bagged;
+    // A worn one goes too: the slot empties, as if the player had taken it
+    // off and the forge had then taken it out of the bag.
+    for (std::optional<StoredItem>& slot : record.loadout) {
+        if (slot.has_value() && slot->rarity == Rarity::Universal &&
+            slot->petalType == petal.id) {
+            slot.reset();
+            ++lost;
         }
     }
+    if (lost <= 0) return;
+    // A refund past a full stack is lost, as anything landing on a full
+    // stack is (PlayerRecord::addItem).
+    const int refund = static_cast<int>(
+        std::min<std::int64_t>(lost * kTitanForgeRefund, kMaxStackCount));
+    giveToInventory(record, petalIndex, Rarity::Apex, refund);
+    const Account* holder = std::as_const(database_).findUserById(userId);
+    std::printf("[TITAN] took %lld universal %s from %s\n", static_cast<long long>(lost),
+                petal.id.c_str(), holder != nullptr ? holder->username.c_str() : userId.c_str());
 
-    std::int64_t taken = 0;
-    for (const std::string& userId : holders) {
-        PlayerRecord& record = database_.progress(userId);
-        const int bagged = record.itemCount(Rarity::Universal, key);
-        record.addItem(Rarity::Universal, key, -bagged);
-        // Wide: a stack runs to kMaxStackCount, and four apex for each of
-        // those does not fit an int.
-        std::int64_t lost = bagged;
-        // A worn one goes too: the slot empties, as if the player had taken it
-        // off and the forge had then taken it out of the bag.
-        for (std::optional<StoredItem>& slot : record.loadout) {
-            if (slot.has_value() && slot->rarity == Rarity::Universal &&
-                slot->petalType == petal.id) {
-                slot.reset();
-                ++lost;
-            }
-        }
-        if (lost <= 0) continue;
-        // A refund past a full stack is lost, as anything landing on a full
-        // stack is (PlayerRecord::addItem).
-        const int refund = static_cast<int>(
-            std::min<std::int64_t>(lost * kTitanForgeRefund, kMaxStackCount));
-        giveToInventory(record, petalIndex, Rarity::Apex, refund);
-        taken += lost;
-        const Account* holder = std::as_const(database_).findUserById(userId);
-        std::printf("[TITAN] took %lld universal %s from %s\n", static_cast<long long>(lost),
-                    petal.id.c_str(), holder != nullptr ? holder->username.c_str() : userId.c_str());
-
-        // The account may be playing right now: its ring loses the petal and
-        // its panels see the refund at once.
-        const std::string text = "Another player forged the Universal " + petal.name +
-                                 ". You received " + std::to_string(refund) + " Apex " +
-                                 petal.name + " back.";
-        for (auto& entry : sessions_) {
-            Session& other = entry.second;
-            if (!other.authenticated() || other.userId != userId) continue;
-            if (other.playing()) applyAccountToSession(other);
-            if (net::Connection* peer = listener_.find(entry.first)) {
-                sendProfile(other, *peer);
-                sendNotice(*peer, net::NoticeSeverity::Warning, text);
-            }
+    // The account may be playing right now: its ring loses the petal and
+    // its panels see the refund at once.
+    const std::string text = "Another player forged the Universal " + petal.name +
+                             ". You received " + std::to_string(refund) + " Apex " +
+                             petal.name + " back.";
+    for (auto& entry : sessions_) {
+        Session& other = entry.second;
+        if (!other.authenticated() || other.userId != userId) continue;
+        if (other.playing()) applyAccountToSession(other);
+        if (net::Connection* peer = listener_.find(entry.first)) {
+            sendProfile(other, *peer);
+            sendNotice(*peer, net::NoticeSeverity::Warning, text);
         }
     }
-    if (taken > 0) database_.markDirty();
-    return static_cast<int>(std::min<std::int64_t>(taken, kMaxStackCount));
 }
 
 void GameServer::announceRareCraft(const Session& session, std::uint16_t petalIndex,
@@ -3553,10 +3564,9 @@ void GameServer::announceRareCraft(const Session& session, std::uint16_t petalIn
     // "An Apex" -- and "An Unique", because the reference tests the LABEL's
     // first letter against the five vowels and 'U' is one of them. Reproduced
     // rather than corrected: the line is the browser's, word for word. The
-    // universal line is not the browser's, and says "The Universal": there is
-    // only ever one of each petal at universal.
+    // Universal sounds like it begins with a consonant ("a universal").
     const std::string article =
-        forged ? "The"
+        forged ? "A"
                : std::string("AEIOUaeiou").find(tier[0]) != std::string::npos ? "An" : "A";
     const std::string petal = content().petal(petalIndex).name;
     const std::string playerName =
@@ -5856,7 +5866,7 @@ void GameServer::handleRespawn(Session& session) {
     // death means the grantee keeps it while they are looking at the death
     // card, which is where the reference leaves it too.
     revokeTempAdmin(session.connection);
-    // Continue stands near the corpse (ashflor-style in-place respawn), not
+    // Continue stands at the corpse (ashflor-style in-place respawn), not
     // back at the title-screen door. Capture the death site before the body
     // is removed.
     bool corpseKnown = false;
@@ -6025,8 +6035,7 @@ Entity GameServer::spawnPlayerNear(Session& session, Realm realm, Vec2 around) {
         auto& transform = world_.get<Transform>(entity);
         const double radius = world_.get<Body>(entity).radius;
         transform.position = realm == Realm::Arena ? kArenaSpawn
-            : respawnPosition(*terrain_, rng_, realm, around, radius,
-                              realm == Realm::Maze ? kMazeCellSize * 0.5 : 200.0);
+            : respawnPosition(*terrain_, realm, around, radius);
     }
     return entity;
 }

@@ -71,8 +71,8 @@ inline constexpr std::uint32_t rarityColor(Rarity r) {
 /// Universal sits above the ladder: it is forged at the titan or given by
 /// an operator. Admin sits above Universal and is created only by `give`.
 /// Neither tier drops, crafts through the ladder, or trades in the shop.
-/// Universal reads utility at apex and health/damage at sqrt(2) times apex;
-/// Admin boosts that baseline further in buildPetalStats.
+/// Universal reads utility at apex and boosts base health and damage fivefold;
+/// Admin has its own boosts in buildPetalStats.
 inline constexpr Rarity kTopLadderRarity = Rarity::Apex;
 inline constexpr int kLadderRarityCount = rarityIndex(kTopLadderRarity) + 1;
 
@@ -209,18 +209,18 @@ inline double petalStatScale(Rarity r) {
     return std::pow(3.0, ladderIndex(r));
 }
 
-/// What universal's health and damage are over apex's.
+/// What Universal's inherited damage riders and summons are over Apex's.
 inline constexpr double kUniversalStrengthBoost = 1.4142135623730951;  // sqrt(2)
 
-/// What a tier's health and damage are over its ladder rung's: sqrt(2) for
+/// What a tier's inherited combat strength is over its ladder rung's: sqrt(2) for
 /// universal, 25 times that for Admin, 1 on the ladder.
 inline double strengthBoost(Rarity r) {
     return r == Rarity::Admin ? kUniversalStrengthBoost * 25.0
          : r == Rarity::Universal ? kUniversalStrengthBoost : 1.0;
 }
 
-/// Petal HEALTH and DAMAGE per tier -- petalStatScale, with universal at
-/// sqrt(2) times apex and Admin another 25 times that.
+/// Combat strength for damage riders and summons. Universal base petal damage
+/// and health instead use the multiplier in buildPetalStats.
 inline double petalStrengthScale(Rarity r) {
     return petalStatScale(r) * strengthBoost(r);
 }

@@ -1305,7 +1305,7 @@ TEST(persist_all_writes_the_database_and_keeps_serving) {
     CHECK_EQ(h.server.persistAll(), std::size_t{1});
 }
 
-TEST(death_auto_respawns_near_the_corpse_without_a_continue_request) {
+TEST(death_auto_respawns_at_the_corpse_without_a_continue_request) {
     Harness h("auto-respawn", {}, flix::testsupport::dataDir(), 0);
     if (!h.ready) { CHECK(false); return; }
     NetClient client;
@@ -1334,7 +1334,7 @@ TEST(death_auto_respawns_near_the_corpse_without_a_continue_request) {
     CHECK(reborn != NULL_ENTITY && reborn != body);
     if (reborn == NULL_ENTITY) return;
     CHECK(world.get<Transform>(reborn).realm == corpse.realm);
-    CHECK(distanceSq(world.get<Transform>(reborn).position, corpse.position) < 800.0 * 800.0);
+    CHECK_NEAR(distanceSq(world.get<Transform>(reborn).position, corpse.position), 0.0, 1e-6);
     CHECK(world.get<Health>(reborn).alive());
     CHECK(!world.isAlive(body));
 

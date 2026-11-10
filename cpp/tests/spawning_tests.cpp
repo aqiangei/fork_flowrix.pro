@@ -1714,7 +1714,7 @@ TEST(a_ready_clock_upgrades_one_super_and_then_cools_down) {
     CHECK_EQ(world.announced[rarityIndex(Rarity::Unique)], 1);
 }
 
-TEST(both_clocks_ready_gives_two_apex_and_one_unique) {
+TEST(both_clocks_ready_gives_three_apex_and_one_unique) {
     SuperBand world;
     world.deal();
     SpawnSystem::BiomeBossClock& clock = onlyClock(world.sim);
@@ -1722,9 +1722,9 @@ TEST(both_clocks_ready_gives_two_apex_and_one_unique) {
     clock.apexReadyMillis = 0.0;
     world.fill();
 
-    CHECK_EQ(mobsOfRarity(world.sim.world, Rarity::Apex), 2);
+    CHECK_EQ(mobsOfRarity(world.sim.world, Rarity::Apex), 3);
     CHECK_EQ(mobsOfRarity(world.sim.world, Rarity::Unique), 1);
-    CHECK_EQ(world.announced[rarityIndex(Rarity::Apex)], 2);
+    CHECK_EQ(world.announced[rarityIndex(Rarity::Apex)], 3);
     CHECK_EQ(world.announced[rarityIndex(Rarity::Unique)], 1);
     const SpawnSystem::BiomeBossClock& after = onlyClock(world.sim);
     CHECK(after.apexReadyMillis > world.sim.now + kApexSpawnCooldownMillis - 20000.0);
@@ -1821,7 +1821,7 @@ TEST(the_minion_cap_never_raises_a_minion) {
     for (const Rarity r : guard) CHECK(r == Rarity::Mythic);
 }
 
-TEST(a_biome_keeps_one_unique_and_two_apex) {
+TEST(a_biome_keeps_one_unique_and_three_apex) {
     // However two got there -- here spawnMob called while both clocks stand
     // ready, which is the one moment the console may place either tier (and
     // spawnMob itself charges nothing) -- the one that appeared LATER is
@@ -1845,6 +1845,7 @@ TEST(a_biome_keeps_one_unique_and_two_apex) {
     const Entity secondApex = spawn(Rarity::Apex, 4500.0);
     const Entity thirdUnique = spawn(Rarity::Unique, 6000.0);
     const Entity thirdApex = spawn(Rarity::Apex, 7500.0);
+    const Entity fourthApex = spawn(Rarity::Apex, 9000.0);
     sim.jump(kPopulationIntervalMillis, {});
 
     CHECK(sim.world.isAlive(firstUnique));
@@ -1852,13 +1853,55 @@ TEST(a_biome_keeps_one_unique_and_two_apex) {
     CHECK(!sim.world.isAlive(secondUnique));
     CHECK(sim.world.isAlive(secondApex));
     CHECK(!sim.world.isAlive(thirdUnique));
-    CHECK(!sim.world.isAlive(thirdApex));
+    CHECK(sim.world.isAlive(thirdApex));
+    CHECK(!sim.world.isAlive(fourthApex));
     CHECK_EQ(animalsOfRarity(sim.world, Rarity::Unique).size(), std::size_t(1));
-    CHECK_EQ(animalsOfRarity(sim.world, Rarity::Apex).size(), std::size_t(2));
+    CHECK_EQ(animalsOfRarity(sim.world, Rarity::Apex).size(), std::size_t(3));
 
     // Despawned, not killed: nothing died, so nothing pays out.
     Query<MobTag, Dead> corpses{sim.world};
     CHECK_EQ(corpses.count(), std::size_t(0));
+}
+
+TEST(an_apex_times_out_only_after_its_health_stops_changing) {
+    Sim sim;
+    const auto centipede = shipped().mobIndex("centipede");
+    const Entity apex = sim.spawner.spawnMob(sim.world, sim.terrain, shipped(), centipede,
+        Rarity::Apex, kCentre, Realm::Overworld, sim.now, sim.rng);
+    CHECK(apex != NULL_ENTITY);
+    if (apex == NULL_ENTITY) return;
+    sim.tick({});
+    sim.world.get<Health>(apex).current *= 0.5;
+    sim.jump(kApexUnchangedHealthMillis - kPopulationIntervalMillis, {});
+    sim.jump(kApexUnchangedHealthMillis - kPopulationIntervalMillis, {});
+    CHECK(sim.world.isAlive(apex));
+    sim.jump(2.0 * kPopulationIntervalMillis, {});
+    CHECK(!sim.world.isAlive(apex));
+    Query<BodySegment> segments{sim.world};
+    CHECK_EQ(segments.count(), std::size_t(0));
+    Query<Dead> corpses{sim.world};
+    CHECK_EQ(corpses.count(), std::size_t(0));
+}
+
+TEST(an_apex_prefers_a_clear_site_near_a_player_in_its_band) {
+    SuperBand world;
+    world.players = {kCentre};
+    world.deal();
+    auto& clock = onlyClock(world.sim);
+    clock.uniqueReadyMillis = std::numeric_limits<double>::infinity();
+    clock.apexReadyMillis = 0.0;
+    world.fill();
+
+    Query<MobTag, MobType, Transform, Body> mobs{world.sim.world};
+    int near = 0;
+    mobs.each([&](Entity, MobTag&, MobType& type, Transform& at, Body& body) {
+        if (type.rarity != Rarity::Apex) return;
+        const double distance = std::sqrt(distanceSq(at.position, kCentre));
+        CHECK(world.band.contains(at.position));
+        CHECK(distance >= body.radius + kPlayerBaseRadius + kMinSpawnDistance);
+        if (distance < 2000.0) ++near;
+    });
+    CHECK(near > 0);
 }
 
 TEST(an_extra_unique_centipede_goes_with_its_whole_body) {
@@ -2121,7 +2164,7 @@ TEST(hel_has_open_band_ground_to_lay_a_sacrifice_on) {
     }
 }
 
-TEST(hel_apex_band_fills_two_boss_slots_as_its_supers_are_cleared) {
+TEST(hel_apex_band_can_hold_multiple_apex_mobs) {
     Sim sim;
     WorldMaps maps;
     std::string error;
@@ -2148,10 +2191,10 @@ TEST(hel_apex_band_fills_two_boss_slots_as_its_supers_are_cleared) {
                 CHECK(sim.spawner.difficultyAt(hel, at.position) >= 160.0);
             }
         });
-        CHECK(apex <= 2);
+        CHECK(apex <= 3);
         for (const Entity mob : supers) sim.world.destroy(mob);
     }
-    CHECK_EQ(apex, 2);
+    CHECK(apex >= 2);
 }
 
 TEST(the_kernel_guardian_has_one_spawn_in_the_plain_computer) {
@@ -5740,7 +5783,7 @@ TEST(a_neverambient_mob_never_comes_from_a_group_roll_however_hard_the_ground) {
     }
 }
 
-TEST(jellyfish_zone_keeps_three_apex_but_other_zones_keep_two) {
+TEST(jellyfish_zone_keeps_four_apex_but_other_zones_keep_three) {
     for (bool jelly : {false, true}) {
         SuperBand world;
         const auto& b = world.band;
@@ -5754,9 +5797,9 @@ TEST(jellyfish_zone_keeps_three_apex_but_other_zones_keep_two) {
         world.deal();
         onlyClock(world.sim).apexReadyMillis = 0;
         world.fill();
-        CHECK_EQ(mobsOfRarity(world.sim.world, Rarity::Apex), jelly ? 3 : 2);
+        CHECK_EQ(mobsOfRarity(world.sim.world, Rarity::Apex), jelly ? 4 : 3);
         world.fill();
-        CHECK_EQ(mobsOfRarity(world.sim.world, Rarity::Apex), jelly ? 3 : 2);
+        CHECK_EQ(mobsOfRarity(world.sim.world, Rarity::Apex), jelly ? 4 : 3);
         std::remove(path.c_str());
     }
 }

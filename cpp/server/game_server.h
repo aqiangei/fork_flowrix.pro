@@ -369,23 +369,23 @@ private:
     void handleAssemble(Session&, net::Connection&, ByteReader&);
     void handleAbsorb(Session&, net::Connection&, ByteReader&);
     /// kTitanForgeCost apex petals for one universal at a titan, standing at
-    /// one as the oracle's craft is; then takeUniversals for everyone else,
-    /// unless the forger is an admin (see tracksUniversals).
+    /// one as the oracle's craft is. A full holder queue displaces its oldest
+    /// member unless the forger is a database admin (see tracksUniversals).
     void handleTitanForge(Session&, net::Connection&, ByteReader&);
     /// Who holds `petalIndex` at universal, for the titan to name.
     void handleTitanHolder(Session&, net::Connection&, ByteReader&);
-    /// Whether the one-of-each rule sees this account's universals: every
+    /// Whether the holder queue sees this account's universals: every
     /// account but a database admin's. An admin's are neither named by the
     /// titan nor taken by another player's forge, and an admin's forge takes
     /// nobody's and is not announced.
     bool tracksUniversals(const std::string& userId) const;
-    /// The username of a tracked account holding `petalIndex` at universal,
-    /// or empty: the memo while it is fresh, else a sweep of every account.
+    /// Current tracked holders, oldest first, reconciled with the saved order.
+    std::vector<std::string> universalHolderOrder(std::uint16_t petalIndex) const;
+    /// A memoized list of the tracked holders' usernames for the titan.
     std::string universalHolderName(std::uint16_t petalIndex);
-    /// Takes every universal `petalIndex` from every tracked account but
-    /// `keeperId`, bag and loadout, refunding kTitanForgeRefund apex for each,
-    /// and tells the live ones. Returns how many universals were taken.
-    int takeUniversals(std::uint16_t petalIndex, const std::string& keeperId);
+    /// Takes this petal from a displaced holder's bag and loadout, refunds
+    /// kTitanForgeRefund apex per copy, and tells the live holder.
+    void reclaimUniversal(std::uint16_t petalIndex, const std::string& userId);
     void handleRespawn(Session&);
     void handlePing(net::Connection&, ByteReader&);
     void handleUpgradeSkill(Session&, net::Connection&, ByteReader&);
@@ -1561,7 +1561,7 @@ private:
     /// Who holds each petal at universal, as last found or forged, and when
     /// (clockMillis_). See kTitanHolderMemoMillis.
     struct HolderMemo {
-        std::string username;
+        std::string names;
         double atMillis = 0;
     };
     std::unordered_map<std::uint16_t, HolderMemo> universalHolders_;
