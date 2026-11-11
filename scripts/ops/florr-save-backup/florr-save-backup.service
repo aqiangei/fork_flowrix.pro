@@ -1,0 +1,18 @@
+[Unit]
+Description=Collect and verify independent Florr game saves in Beijing
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=florr-save-backup
+StateDirectory=florrclone-backup
+StateDirectoryMode=0700
+LoadCredential=ssh-key:/etc/florrclone-backup/id_ed25519
+ExecStart=/usr/bin/python3 /usr/local/libexec/florr-save-backup.py collect %S/florrclone-backup %d/ssh-key /etc/florrclone-backup/known_hosts
+TimeoutStartSec=280
+UMask=0077
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes

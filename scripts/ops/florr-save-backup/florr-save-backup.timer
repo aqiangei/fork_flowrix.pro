@@ -1,0 +1,10 @@
+[Unit]
+Description=Back up independent Florr game saves every five minutes
+
+[Timer]
+OnCalendar=*-*-* *:00/5:00
+AccuracySec=5s
+Persistent=true
+
+[Install]
+WantedBy=timers.target
