@@ -2649,6 +2649,26 @@ void MobAiSystem::run(World& world, const Terrain& terrain, const SpatialGrid& g
         }
     }
 
+    // A Hel centipede stays together while roaming. A body segment that
+    // spots a flower can leave the chain and pursue it under its own AI.
+    const std::uint16_t helBody = content().mobIndex("hel_centipede_body");
+    if (helBody != kInvalidIndex) {
+        segments_.each([&](Entity self, BodySegment& segment, Transform& at) {
+            if (segment.ahead == NULL_ENTITY || world.has<Pet>(self)) return;
+            const MobType* type = world.tryGet<MobType>(self);
+            if (type == nullptr || type->configIndex != helBody ||
+                !stepsThisTick(self, at.position, at.realm, type->rarity, activePlayers)) return;
+            MobAi* ai = world.tryGet<MobAi>(self);
+            if (ai == nullptr || !(ai->aggroRange > 0.0)) return;
+            const Entity target =
+                acquireTarget(world, terrain, grid, self, at.position, at.realm, ai->aggroRange,
+                              /*raisedOnly=*/false);
+            if (target == NULL_ENTITY) return;
+            ai->target = target;
+            segment.ahead = NULL_ENTITY;
+            ++stats_.promotions;
+        });
+    }
     repairChains(world);
 
     // Snapshotted before anything moves, which is where the reference builds

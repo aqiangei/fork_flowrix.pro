@@ -774,7 +774,7 @@
         "type": "petal",
         "itemType": "ruby",
         "rarity": "common",
-        "probability": 0.06,
+        "probability": 0.12,
         "minQuantity": 1,
         "maxQuantity": 1
       },
@@ -997,7 +997,7 @@
         "type": "petal",
         "itemType": "ruby",
         "rarity": "common",
-        "probability": 0.1,
+        "probability": 0.2,
         "minQuantity": 1,
         "maxQuantity": 1
       },

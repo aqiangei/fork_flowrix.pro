@@ -2626,7 +2626,7 @@
         "image": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 32 32\"><path d=\"M11 11 5 6m6 15-6 5m15-15 6-5m-6 15 6 5\" fill=\"none\" stroke=\"#582326\" stroke-width=\"3\" stroke-linecap=\"round\"/><ellipse cx=\"16\" cy=\"16\" rx=\"10\" ry=\"9\" fill=\"#a63739\" stroke=\"#652428\" stroke-width=\"3\"/></svg>",
         "ai_type": "hostile",
         "centipede_ai": true,
-        "range": 0,
+        "range": 240,
         "groups": {
             "hel": 0
         },

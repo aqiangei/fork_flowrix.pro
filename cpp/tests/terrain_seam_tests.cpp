@@ -209,3 +209,34 @@ TEST(map_tiles_leave_no_seam_when_antennae_zoom_the_camera_far_out) {
         CHECK(blackLines(pixels, false) == 0);
     }
 }
+
+TEST(hel_terrain_draws_after_switching_from_cached_terrain) {
+    TerrainScene scene;
+    const bool loaded = scene.load();
+    CHECK(loaded);
+    if (!loaded) return;
+    scene.renderer.setTerrainCache(true);
+    scene.frame({16384.0, 16384.0}, 1.0);
+    std::size_t chunks = 0, bytes = 0;
+    scene.renderer.terrainCacheStats(chunks, bytes);
+    CHECK(chunks > 0);
+
+    for (const char* id : {"hel", "prestige_hel"}) {
+        bool found = false;
+        const Realm realm = scene.maps.realmOfId(id, found);
+        CHECK(found);
+        if (!found) continue;
+        scene.view.setRealm(realm);
+        const MapData* map = scene.maps.forRealm(realm);
+        if (map == nullptr) { CHECK(false); continue; }
+        const Vec2 centre{map->width() * kTileSize * 0.5, map->height() * kTileSize * 0.5};
+        for (double zoom : {1.0, 0.55}) {
+            const auto pixels = scene.frame(centre, zoom);
+            CHECK(blackLines(pixels, true) < kPixelWidth / 2);
+            CHECK(blackLines(pixels, false) < kPixelHeight / 2);
+        }
+        scene.renderer.terrainCacheStats(chunks, bytes);
+        CHECK_EQ(chunks, std::size_t(0));
+        CHECK_EQ(bytes, std::size_t(0));
+    }
+}

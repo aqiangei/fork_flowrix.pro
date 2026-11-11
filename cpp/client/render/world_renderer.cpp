@@ -1769,7 +1769,10 @@ void WorldRenderer::drawTerrain(Canvas& canvas, const Camera& camera, Realm real
         if (layer.cells.size() != cellCount) return;
     }
 
-    if (terrainCache_ &&
+    // Draw Hel's terrain directly to avoid a blank chunk bitmap hiding its tiles.
+    const bool directHel = map->id() == "hel" || map->id() == "prestige_hel";
+    if (directHel && !terrainChunks_.chunks.empty()) terrainChunks_ = TerrainChunks{};
+    if (terrainCache_ && !directHel &&
         drawTerrainChunks(canvas, camera, *map, art, span.x0, span.y0, span.x1, span.y1)) {
         return;
     }

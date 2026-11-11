@@ -1281,6 +1281,23 @@ TEST(a_decapitated_segment_is_promoted_and_keeps_its_own_tail) {
     CHECK_NEAR(sim.gap(second, first), 40.0, 6.0);
 }
 
+TEST(a_hel_centipede_body_breaks_away_to_hunt_a_nearby_flower) {
+    CHECK(contentReady());
+    Sim sim;
+    const Entity head = sim.spawnMob("hel_centipede", kOrigin);
+    const Entity segment = sim.spawnMob("hel_centipede_body", kOrigin + Vec2{40, 0});
+    link(sim, head, NULL_ENTITY, 40.0);
+    link(sim, segment, head, 40.0);
+    sim.tickIntent();
+    CHECK_EQ(sim.world.get<BodySegment>(segment).ahead, head);
+
+    const Entity player = sim.spawnPlayer(kOrigin + Vec2{140, 0});
+    sim.tickIntent();
+    CHECK_EQ(sim.world.get<BodySegment>(segment).ahead, NULL_ENTITY);
+    CHECK_EQ(sim.world.get<MobAi>(segment).target, player);
+    CHECK(sim.velocityOf(segment).x > 0.0);
+}
+
 TEST(a_segment_behind_a_corpse_is_promoted_before_the_reaper_runs) {
     CHECK(contentReady());
     Sim sim;
