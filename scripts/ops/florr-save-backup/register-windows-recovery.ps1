@@ -8,9 +8,11 @@ if (!(Test-Path -LiteralPath $runner) -or !(Test-Path -LiteralPath $PythonPath))
     throw 'The recovery script and Python must be installed before registration.'
 }
 $action = New-ScheduledTaskAction -Execute $PythonPath -Argument ('-I "' + $runner + '"') -WorkingDirectory $BackupDirectory
+$now = Get-Date
+$nextHour = $now.Date.AddHours($now.Hour + 1)
 $triggers = @(
     (New-ScheduledTaskTrigger -AtStartup),
-    (New-ScheduledTaskTrigger -Daily -At '03:30')
+    (New-ScheduledTaskTrigger -Once -At $nextHour -RepetitionInterval (New-TimeSpan -Hours 1))
 )
 $settings = New-ScheduledTaskSettingsSet -StartWhenAvailable -MultipleInstances IgnoreNew -RestartCount 3 -RestartInterval (New-TimeSpan -Minutes 5) -ExecutionTimeLimit (New-TimeSpan -Minutes 10) -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries
 $principal = New-ScheduledTaskPrincipal -UserId 'SYSTEM' -LogonType ServiceAccount -RunLevel Highest

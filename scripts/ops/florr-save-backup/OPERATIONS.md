@@ -32,7 +32,7 @@ should be owned and readable by SYSTEM.
 
 Copy pull-beijing-recovery.py to the Windows backup directory alongside
 id_ed25519 and known_hosts. Run register-windows-recovery.ps1 from an elevated
-PowerShell. The task runs as SYSTEM at startup and daily at 03:30 local time.
+PowerShell. The task runs as SYSTEM at startup and every hour on the hour.
 The Windows copy holds the latest verified save for each of the four games
 plus feedback and council data. Each run publishes a timestamped archive only
 after verifying it. Previous Windows archives are retained.
