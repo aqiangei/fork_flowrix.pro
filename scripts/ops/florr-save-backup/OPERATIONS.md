@@ -36,3 +36,19 @@ PowerShell. The task runs as SYSTEM at startup and every hour on the hour.
 The Windows copy holds the latest verified save for each of the four games
 plus feedback and council data. Each run publishes a timestamped archive only
 after verifying it. Previous Windows archives are retained.
+
+
+The collector's post-run step marks published snapshots immutable. That
+prevents direct removal and writes while leaving archives readable. The
+post-run step also applies the same retention policy as before.
+
+For manual deletion, use an interactive root shell on Beijing and run
+python3 /usr/local/libexec/florr-save-backup.py delete ROLE UTC_TIMESTAMP.
+The command prompts for the separate deletion password and removes only the
+specified snapshot. The timestamp is the snapshot directory name. Provision
+the verifier at /etc/florrclone-backup/delete-password.json as root with mode
+0600. It contains the hex salt and hex scrypt digest, with N=32768, r=8, p=1
+and the default 64-byte digest. Keep the password outside the server.
+
+Root can still clear the Linux immutable flag directly. This protects
+against accidental deletion and ordinary service accounts.

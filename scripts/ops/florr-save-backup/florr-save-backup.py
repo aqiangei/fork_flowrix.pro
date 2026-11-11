@@ -2,10 +2,13 @@
 """Collect verified copies of the independent, already-persisted game saves."""
 
 import argparse
+import array
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 import fcntl
+from getpass import getpass
 import hashlib
+import hmac
 import io
 import json
 import lzma
@@ -26,6 +29,9 @@ TARGETS = {
 }
 MAX_BYTES = 256 * 1024**2
 STAMP = "%Y%m%dT%H%M%S%fZ"
+ARCHIVE_ROOT = Path("/var/lib/florrclone-backup")
+DELETE_PASSWORD = Path("/etc/florrclone-backup/delete-password.json")
+SNAPSHOT_NAME = re.compile(r"\d{8}T\d{12}Z")
 
 
 class Maintenance(Exception):
@@ -171,19 +177,70 @@ def publish(root, info, packed):
     return destination
 
 
+def set_immutable(fd, enabled):
+    # Linux FS_IOC_GETFLAGS and FS_IOC_SETFLAGS use a native long.
+    flags = array.array("L", [0])
+    ioctl_type = (flags.itemsize << 16) | (ord("f") << 8)
+    fcntl.ioctl(fd, (2 << 30) | ioctl_type | 1, flags, True)
+    immutable = 0x10  # FS_IMMUTABLE_FL
+    wanted = flags[0] | immutable if enabled else flags[0] & ~immutable
+    if wanted != flags[0]:
+        flags[0] = wanted
+        fcntl.ioctl(fd, (1 << 30) | ioctl_type | 2, flags, True)
+
+
+def snapshot_members(path):
+    if not SNAPSHOT_NAME.fullmatch(path.name) or path.is_symlink() or not path.is_dir():
+        return None
+    names = set(os.listdir(path))
+    for extension in ("xz", "gz"):
+        expected = {"backup-metadata.json", f"inventory.json.{extension}"}
+        if names == expected:
+            return sorted(expected)
+    return None
+
+
+def protect_snapshot(path, members, enabled):
+    directory = os.open(path, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+    try:
+        for name in members:
+            fd = os.open(name, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=directory)
+            try:
+                info = os.fstat(fd)
+                if not stat.S_ISREG(info.st_mode) or info.st_nlink != 1:
+                    raise ValueError("unexpected snapshot member")
+                set_immutable(fd, enabled)
+            finally:
+                os.close(fd)
+        set_immutable(directory, enabled)
+    finally:
+        os.close(directory)
+
+
+def remove_snapshot(path, members):
+    try:
+        protect_snapshot(path, members, False)
+        shutil.rmtree(path)
+    except Exception:
+        if path.exists():
+            remaining = [name for name in members if (path / name).is_file()]
+            protect_snapshot(path, remaining, True)
+        raise
+
+
 def prune(root):
     # Keep every capture for two days and the newest one per UTC day for 30 days.
     now = datetime.now(timezone.utc)
     daily = set()
     for child in sorted(root.iterdir(), reverse=True):
-        if (not re.fullmatch(r"\d{8}T\d{12}Z", child.name) or child.is_symlink()
-                or not child.is_dir() or not (child / "backup-metadata.json").is_file()
-                or not any((child / f"inventory.json.{ext}").is_file() for ext in ("xz", "gz"))):
+        members = snapshot_members(child)
+        if members is None:
             continue
+        protect_snapshot(child, members, True)
         captured = datetime.strptime(child.name, STAMP).replace(tzinfo=timezone.utc)
         age = now - captured
         if age >= timedelta(days=30) or (age >= timedelta(days=2) and captured.date() in daily):
-            shutil.rmtree(child)
+            remove_snapshot(child, members)
         else:
             daily.add(captured.date())
 
@@ -203,7 +260,6 @@ def collect_one(role, root, key, known_hosts):
     info, packed = verify_snapshot(role, result.stdout)
     if packed is not None:
         directory = publish(root / role, info, packed)
-        prune(root / role)
         info["directory"] = str(directory)
     return info
 
@@ -230,6 +286,47 @@ def collect(root, key, known_hosts):
         return int(failed)
 
 
+def authorize_delete():
+    if not sys.stdin.isatty():
+        raise ValueError("manual deletion requires an interactive terminal")
+    verifier = json.loads(DELETE_PASSWORD.read_bytes())
+    password = getpass("Backup deletion password: ")
+    digest = hashlib.scrypt(password.encode(), salt=bytes.fromhex(verifier["salt"]),
+                            n=2**15, r=8, p=1, maxmem=64 * 1024**2)
+    if not hmac.compare_digest(digest.hex(), verifier["hash"]):
+        raise ValueError("incorrect deletion password")
+
+
+def manage_archives(args):
+    lock_path = ARCHIVE_ROOT / ".collect.lock"
+    if args.command == "delete":
+        authorize_delete()
+    lock = os.open(lock_path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+    try:
+        if not stat.S_ISREG(os.fstat(lock).st_mode):
+            raise ValueError("invalid collector lock")
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        if args.command == "maintain":
+            for role in TARGETS:
+                root = ARCHIVE_ROOT / role
+                if root.is_dir() and not root.is_symlink():
+                    prune(root)
+        else:
+            if not SNAPSHOT_NAME.fullmatch(args.stamp):
+                raise ValueError("invalid snapshot timestamp")
+            root = ARCHIVE_ROOT / args.role
+            if root.is_symlink():
+                raise ValueError("invalid archive directory")
+            path = root / args.stamp
+            members = snapshot_members(path)
+            if members is None:
+                raise ValueError("snapshot does not exist or has an unexpected layout")
+            remove_snapshot(path, members)
+            print(f"Deleted {args.role}/{args.stamp}", flush=True)
+    finally:
+        os.close(lock)
+
+
 def main():
     os.umask(0o077)
     parser = argparse.ArgumentParser(description=__doc__)
@@ -241,7 +338,18 @@ def main():
     pull.add_argument("root", type=Path)
     pull.add_argument("key")
     pull.add_argument("known_hosts")
+    commands.add_parser("maintain")
+    delete = commands.add_parser("delete")
+    delete.add_argument("role", choices=TARGETS)
+    delete.add_argument("stamp")
     args = parser.parse_args()
+    if args.command in ("maintain", "delete"):
+        try:
+            manage_archives(args)
+            return 0
+        except (OSError, ValueError) as exc:
+            print(f"Archive operation failed: {exc}", file=sys.stderr)
+            return 1
     if args.command in ("export", "export-from-two"):
         if args.command == "export-from-two":
             request = os.environ.get("SSH_ORIGINAL_COMMAND", "")
