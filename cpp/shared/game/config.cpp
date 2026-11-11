@@ -2071,11 +2071,13 @@ PetalStats buildPetalStats(const PetalConfig& c, Rarity r) {
     if (c.id == "antennae" && rarityIndex(tier) >= rarityIndex(Rarity::Rare)) {
         s.cameraZoom = 1.0 / antennaeVisionRangeScale(tier);
     }
-    // Apply after fixed-stat overrides too, so every Universal petal has
-    // exactly five times the corresponding Apex base damage and health.
-    if (graded == Rarity::Universal) {
-        s.damage *= 5.0;
-        s.health *= 5.0;
+    // Apply to base damage and health after the named petal overrides.
+    // Universal stays five times the corresponding Apex stats.
+    if (graded == Rarity::Apex || graded == Rarity::Universal) {
+        constexpr double apexBaseBoost = 1.25;
+        const double boost = graded == Rarity::Universal ? 5.0 * apexBaseBoost : apexBaseBoost;
+        s.damage *= boost;
+        s.health *= boost;
     }
     // Admin starts with its legacy combat strength and apex utility, then
     // boosts the useful effects. Apply AFTER all named-petal overrides so

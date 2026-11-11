@@ -1313,6 +1313,9 @@ TEST(death_auto_respawns_at_the_corpse_without_a_continue_request) {
     client.joinGame(1280, 720, {}, "alice");
     CHECK(h.stepUntil({&client}, [&] { return client.status() == NetClient::Status::Playing; }));
 
+    CHECK(h.stepUntil({&client}, [&] { return client.view().self().netId != 0; }));
+    const std::uint32_t corpseNetId = client.view().self().netId;
+
     World& world = h.server.world();
     const Entity body = onlyPlayer(world);
     CHECK(body != NULL_ENTITY);
@@ -1323,6 +1326,12 @@ TEST(death_auto_respawns_at_the_corpse_without_a_continue_request) {
     h.step(1, {&client});
     const double reportedAt = h.clock;
     CHECK(h.stepUntil({&client}, [&] { return client.dead(); }));
+
+    CHECK(h.stepUntil({&client}, [&] {
+        const auto& entities = client.view().entities();
+        const auto corpseView = entities.find(corpseNetId);
+        return corpseView != entities.end() && corpseView->second.dead();
+    }));
 
     h.clock = reportedAt + kAutoRespawnDelaySeconds * 1000.0 - 2 * net::kTickMillis;
     h.step(1, {&client});
@@ -1337,6 +1346,12 @@ TEST(death_auto_respawns_at_the_corpse_without_a_continue_request) {
     CHECK_NEAR(distanceSq(world.get<Transform>(reborn).position, corpse.position), 0.0, 1e-6);
     CHECK(world.get<Health>(reborn).alive());
     CHECK(!world.isAlive(body));
+
+    CHECK(h.stepUntil({&client}, [&] { return client.view().self().netId != corpseNetId; }));
+    const auto& entities = client.view().entities();
+    CHECK(entities.count(corpseNetId) == 0);
+    const auto living = entities.find(client.view().self().netId);
+    CHECK(living != entities.end() && !living->second.dead());
 
     // A Continue packet arriving after the timeout cannot create another body.
     client.requestRespawn();

@@ -414,8 +414,9 @@ TEST(petal_stats_scale_across_rarities) {
     for (int tier = 0; tier < kRarityCount; ++tier) {
         const Rarity rarity = static_cast<Rarity>(tier);
         const PetalStats s = r.petalStats(basic, rarity);
-        const double baseScale = rarity == Rarity::Universal
-            ? 5.0 * petalStatScale(Rarity::Apex) : petalStrengthScale(rarity);
+        double baseScale = petalStrengthScale(rarity);
+        if (rarity == Rarity::Apex) baseScale *= 1.25;
+        if (rarity == Rarity::Universal) baseScale = 6.25 * petalStatScale(Rarity::Apex);
         CHECK_NEAR(s.damage, damage * baseScale, std::fabs(s.damage) * 1e-9);
         CHECK_NEAR(s.health, health * baseScale, std::fabs(s.health) * 1e-9);
         CHECK_NEAR(s.reloadMillis, rarity == Rarity::Admin ? reload / 2.0 : reload, 1e-9);
@@ -494,10 +495,10 @@ TEST(a_universal_petal_has_five_times_apex_base_health_and_damage) {
             CHECK(false);
         }
     }
-    // Spelled out once on the plainest petal: 10 at common is 196830 at apex.
+    // Basic has 10 at common, boosted by 25% at Apex after the 3x ladder.
     const PetalStats basic = r.petalStats(r.petalIndex("basic"), Rarity::Universal);
-    CHECK_NEAR(basic.damage, 196830.0 * 5.0, 1e-6);
-    CHECK_NEAR(basic.health, 196830.0 * 5.0, 1e-6);
+    CHECK_NEAR(basic.damage, 196830.0 * 6.25, 1e-6);
+    CHECK_NEAR(basic.health, 196830.0 * 6.25, 1e-6);
 }
 
 TEST(no_mob_is_universal) {
@@ -1787,8 +1788,9 @@ TEST(a_stinger_clump_splits_its_slots_damage_rather_than_multiplying_it) {
     for (int i = 0; i < kRarityCount; ++i) {
         const Rarity t = static_cast<Rarity>(i);
         const PetalStats s = r.petalStats(stinger, t);
-        const double scale = t == Rarity::Universal ? 5.0 * petalStatScale(Rarity::Apex)
-                                                    : petalStrengthScale(t);
+        double scale = petalStrengthScale(t);
+        if (t == Rarity::Apex) scale *= 1.25;
+        if (t == Rarity::Universal) scale = 6.25 * petalStatScale(Rarity::Apex);
         CHECK_NEAR(s.damage * s.count, r.petal(stinger).damage * scale, 1e-6);
     }
 }
@@ -1841,8 +1843,8 @@ TEST(admin_petals_keep_their_existing_combat_and_utility_effects) {
         const double damageBoost = id == "yggdrasil" ? 25.0 : strengthBoost(Rarity::Admin);
         const double healthBoost = id == "yggdrasil" || id == "lightning"
             ? 25.0 : strengthBoost(Rarity::Admin);
-        CHECK_NEAR(a.damage, apex.damage * damageBoost, std::max(1.0, a.damage) * 1e-9);
-        CHECK_NEAR(a.health, apex.health * healthBoost, std::max(1.0, a.health) * 1e-9);
+        CHECK_NEAR(a.damage, apex.damage / 1.25 * damageBoost, std::max(1.0, a.damage) * 1e-9);
+        CHECK_NEAR(a.health, apex.health / 1.25 * healthBoost, std::max(1.0, a.health) * 1e-9);
         CHECK_NEAR(a.heal, u.heal * 10.0, std::max(1.0, u.heal) * 1e-9);
         CHECK_NEAR(a.reloadMillis, u.reloadMillis * 0.5, 1e-9);
         CHECK_NEAR(a.healChargeMillis, u.healChargeMillis * 0.5, 1e-9);

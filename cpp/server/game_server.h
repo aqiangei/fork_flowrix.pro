@@ -1035,7 +1035,7 @@ private:
     /// stand, settling the session's realm and starting an arena run -- which
     /// is exactly the part a splitter's second body must not repeat.
     Entity createPlayerBody(Session&, Realm, Vec2 position);
-    void despawnPlayer(Session&, bool persist);
+    void despawnPlayer(Session&, bool persist, bool keepClientView = false);
     /// Queues a player body's destruction together with everything it put
     /// into the world: its petals AND the pets its eggs hatched. Every path
     /// that takes a body away goes through here -- a pet left behind keeps a

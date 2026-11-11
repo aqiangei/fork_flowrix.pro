@@ -1480,15 +1480,14 @@ TEST(a_strike_is_paid_at_the_petal_damage_rate) {
 
 TEST(a_strike_climbs_the_rarity_ladder_with_the_petal) {
     if (!contentLoaded()) return;
-    // A petal whose own damage stat carries the tier: petalStats has already
-    // put it up the 3x ladder, and the strike spends exactly that.
+    // Lightning spends its scaled base damage, including the Apex boost.
     Rig bolt;
     bolt.equip(0, "lightning", Rarity::Apex);
     bolt.settleEquips();
     bolt.settleRing();
     addMob(bolt, bolt.world.get<Transform>(bolt.petals(0).front()).position);
     CHECK(bolt.tickUntil([&] { return countStrikes(bolt) > 0; }, 120));
-    CHECK_NEAR(lastStrikeDamage(bolt), 25.0 * petalStatScale(Rarity::Apex), 1e-6);
+    CHECK_NEAR(lastStrikeDamage(bolt), 25.0 * petalStatScale(Rarity::Apex) * 1.25, 1e-6);
 
     // And a petal with NO damage stat climbs the same ladder. A flat fallback
     // is what made an apex battery shock for a common battery's number.

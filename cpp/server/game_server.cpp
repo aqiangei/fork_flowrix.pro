@@ -5878,7 +5878,9 @@ void GameServer::handleRespawn(Session& session) {
             corpseRealm = corpse->realm;
             corpsePos = corpse->position;
         }
-        despawnPlayer(session, false);
+        // The client keeps drawing this realm through Continue. Keep the
+        // replication baseline so the next snapshot removes the old body.
+        despawnPlayer(session, false, /*keepClientView=*/true);
     }
     const Entity reborn = corpseKnown ? spawnPlayerNear(session, corpseRealm, corpsePos)
                                       : spawnPlayer(session);
@@ -6219,7 +6221,7 @@ void GameServer::persistPlayer(const Session& session) {
     database_.markDirty();
 }
 
-void GameServer::despawnPlayer(Session& session, bool persist) {
+void GameServer::despawnPlayer(Session& session, bool persist, bool keepClientView) {
     if (session.entity == NULL_ENTITY) return;
     // Control needs a flower at both ends, so the body going is the end of
     // any this session is part of: whoever was steering it is put back on
@@ -6243,7 +6245,7 @@ void GameServer::despawnPlayer(Session& session, bool persist) {
     session.entity = NULL_ENTITY;
     session.autoRespawnAtMillis = 0;
     session.stage = SessionStage::Authenticated;
-    views_[session.connection].reset();
+    if (!keepClientView) views_[session.connection].reset();
     // Same reason as the spawn: the id this member was known by is gone, and a
     // roster still naming it points every squadmate's HUD at nothing.
     if (const Squad* squad = squads_.forMember(squadIdOf(session))) broadcastSquadUpdate(*squad);
