@@ -133,6 +133,8 @@ constexpr Pair kNameTr[] = {
     {"Healing Petal", "治疗花瓣"},
     {"Heaviest", "最重"},
     {"Hel Beetle", "地狱甲虫"},
+    {"Hel Centipede", "冥界蜈蚣"},
+    {"Gambler", "赌徒"},
     {"Hel Beetle Egg", "地狱甲虫蛋"},
     {"Honey", "蜂蜜"},
     {"Hornet", "大黄蜂"},

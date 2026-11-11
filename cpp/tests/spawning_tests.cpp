@@ -2185,6 +2185,8 @@ TEST(hel_apex_band_can_hold_multiple_apex_mobs) {
         std::vector<Entity> supers;
         mobs.each([&](Entity e, MobTag&, MobType& type, Transform& at) {
             if (at.realm != hel) return;
+            const BodySegment* segment = sim.world.tryGet<BodySegment>(e);
+            if (segment != nullptr && segment->chainHead != e) return;
             if (type.rarity == Rarity::Super) supers.push_back(e);
             if (type.rarity == Rarity::Apex) {
                 ++apex;
@@ -3533,6 +3535,42 @@ TEST(a_spider_never_drops_a_third_eye_below_legendary) {
     }
     // An ultra spider's chaff alone is legendary, so they do still come.
     CHECK(legendaryOrBetter > 0);
+}
+
+TEST(hel_beetles_roll_apex_sacrifice_only_at_ultra_and_above) {
+    World world;
+    CommandBuffer commands{world};
+    SpatialGrid grid;
+    ShippedLoot loot;
+    EventQueue events;
+    Rng rng(4244);
+    const auto beetle = shipped().mobIndex("hel_beetle");
+    const auto sacrifice = shipped().petalIndex("sacrifice");
+    CHECK(beetle != kInvalidIndex && sacrifice != kInvalidIndex);
+    if (beetle == kInvalidIndex || sacrifice == kInvalidIndex) return;
+    const Entity player = makePlayer(world, kCentre + Vec2{5000, 0});
+
+    for (const Rarity tier : {Rarity::Mythic, Rarity::Ultra, Rarity::Apex}) {
+        int sacrifices = 0;
+        for (int i = 0; i < 256; ++i) {
+            const Entity corpse = makeCorpse(world, beetle, tier, kCentre, player, {player});
+            loot.run(world, grid, shipped(), rng, 0.0, net::kTickSeconds, commands, events);
+            commands.flush();
+            int copies = 0;
+            for (const Entity drop : liveDrops(world)) {
+                const DropItem& item = world.get<DropItem>(drop);
+                if (item.configIndex == sacrifice) {
+                    ++copies;
+                    CHECK(item.rarity == Rarity::Apex);
+                }
+                world.destroy(drop);
+            }
+            CHECK(copies <= 1);
+            sacrifices += copies;
+            world.destroy(corpse);
+        }
+        CHECK(tier == Rarity::Mythic ? sacrifices == 0 : sacrifices > 0 && sacrifices < 256);
+    }
 }
 
 TEST(which_row_is_graded_is_drawn_by_probability) {

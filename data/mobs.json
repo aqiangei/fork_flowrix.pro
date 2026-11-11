@@ -2572,5 +2572,101 @@
             "super": 0.0001
         },
         "noEggDrop": false
+    },
+    "hel_centipede": {
+        "name": "Hel Centipede",
+        "damage": 22,
+        "health": 58,
+        "size": 1.1667,
+        "speed": 0.68,
+        "cooldown": 2000,
+        "xp": {
+            "common": 3,
+            "uncommon": 9,
+            "rare": 60,
+            "epic": 480,
+            "legendary": 2400,
+            "mythic": 54000,
+            "ultra": 270000,
+            "super": 2100000,
+            "unique": 11700000
+        },
+        "description": "A venomous crawler from Hel",
+        "color": "#a63739",
+        "image": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 32 32\"><path d=\"M11 11 5 6m6 15-6 5m15-15 6-5m-6 15 6 5\" fill=\"none\" stroke=\"#582326\" stroke-width=\"3\" stroke-linecap=\"round\"/><ellipse cx=\"16\" cy=\"16\" rx=\"10\" ry=\"9\" fill=\"#a63739\" stroke=\"#652428\" stroke-width=\"3\"/><path d=\"M23 12l6-5m-6 13 6 5\" fill=\"none\" stroke=\"#652428\" stroke-width=\"2\" stroke-linecap=\"round\"/><circle cx=\"22\" cy=\"13\" r=\"1.2\" fill=\"#ffe09c\"/><circle cx=\"22\" cy=\"19\" r=\"1.2\" fill=\"#ffe09c\"/></svg>",
+        "ai_type": "hostile",
+        "centipede_ai": true,
+        "range": 500,
+        "groups": {
+            "hel": 0.22
+        },
+        "poison": 0.005,
+        "poisonDuration": 2000
+    },
+    "hel_centipede_body": {
+        "name": "Hel Centipede",
+        "damage": 17,
+        "health": 45,
+        "size": 1.1667,
+        "speed": 0.48,
+        "cooldown": 2000,
+        "xp": {
+            "common": 1,
+            "uncommon": 3,
+            "rare": 15,
+            "epic": 120,
+            "legendary": 600,
+            "mythic": 13500,
+            "ultra": 67500,
+            "super": 525000,
+            "unique": 2900000
+        },
+        "description": "A segment of a Hel centipede",
+        "color": "#a63739",
+        "image": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 32 32\"><path d=\"M11 11 5 6m6 15-6 5m15-15 6-5m-6 15 6 5\" fill=\"none\" stroke=\"#582326\" stroke-width=\"3\" stroke-linecap=\"round\"/><ellipse cx=\"16\" cy=\"16\" rx=\"10\" ry=\"9\" fill=\"#a63739\" stroke=\"#652428\" stroke-width=\"3\"/></svg>",
+        "ai_type": "hostile",
+        "centipede_ai": true,
+        "range": 0,
+        "groups": {
+            "hel": 0
+        },
+        "noEggDrop": true,
+        "poison": 0.005,
+        "poisonDuration": 2000
+    },
+    "gambler": {
+        "name": "Gambler",
+        "health": 105,
+        "damage": 25,
+        "size": 1.08,
+        "visual_scale": 1.0,
+        "visualOffsetX": 0,
+        "speed": 0.58,
+        "chase_speed": 0.95,
+        "cooldown": 2000,
+        "xp": {
+            "common": 2,
+            "uncommon": 8,
+            "rare": 35,
+            "epic": 300,
+            "legendary": 1500,
+            "mythic": 40000,
+            "ultra": 200000,
+            "super": 1600000,
+            "unique": 8000000
+        },
+        "description": "A haunted die that charges at nearby flowers",
+        "color": "#a04448",
+        "image": "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 32 32\"><rect x=\"4\" y=\"4\" width=\"24\" height=\"24\" rx=\"6\" fill=\"#a04448\" stroke=\"#652428\" stroke-width=\"3\"/><g fill=\"#ffe2a5\"><circle cx=\"10\" cy=\"10\" r=\"2\"/><circle cx=\"16\" cy=\"16\" r=\"2\"/><circle cx=\"22\" cy=\"22\" r=\"2\"/></g></svg>",
+        "ai_type": "hostile",
+        "gardn_ai": true,
+        "range": 210,
+        "groups": {
+            "hel": 0.28
+        },
+        "jump": {
+            "distance": 140,
+            "pauseMs": 1250
+        }
     }
 }

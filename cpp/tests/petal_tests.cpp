@@ -1679,10 +1679,10 @@ TEST(the_reload_talent_paces_a_projectile_petals_volleys) {
 
 TEST(a_golden_leaf_cuts_the_reload_of_the_rest_of_its_bar) {
     if (!contentLoaded()) return;
-    // florr's figure, read off its tooltip builder: 2.5% a tier.
+    // florr's figure, read off its tooltip builder: 3% a tier.
     const ContentRegistry& registry = fixture().registry;
-    CHECK_NEAR(registry.petalStats(petalId("golden_leaf"), Rarity::Common).reloadCut, 0.025, 1e-9);
-    CHECK_NEAR(registry.petalStats(petalId("golden_leaf"), Rarity::Ultra).reloadCut, 0.175, 1e-9);
+    CHECK_NEAR(registry.petalStats(petalId("golden_leaf"), Rarity::Common).reloadCut, 0.03, 1e-9);
+    CHECK_NEAR(registry.petalStats(petalId("golden_leaf"), Rarity::Ultra).reloadCut, 0.21, 1e-9);
     CHECK_NEAR(registry.petalStats(petalId("basic"), Rarity::Ultra).reloadCut, 0.0, 1e-9);
 
     const auto breakSlot = [](Rig& rig, int slot) {
@@ -1697,20 +1697,20 @@ TEST(a_golden_leaf_cuts_the_reload_of_the_rest_of_its_bar) {
         return rig.slot(slot).reloadReadyAtMillis - brokenAt;
     };
 
-    // Basic's 1200ms, less an ultra leaf's 17.5%.
+    // Basic's 1200ms, less an ultra leaf's 21%.
     Rig rig;
     rig.equip(0, "basic");
     rig.equip(1, "golden_leaf", Rarity::Ultra);
     rig.settleEquips();
-    CHECK_NEAR(breakSlot(rig, 0), 1200.0 * 0.825, 1e-9);
+    CHECK_NEAR(breakSlot(rig, 0), 1200.0 * 0.79, 1e-9);
 
     // Its own reload too.
     const double leafReload =
         registry.petalStats(petalId("golden_leaf"), Rarity::Ultra).reloadMillis;
-    CHECK_NEAR(breakSlot(rig, 1), std::max(leafReload * 0.825, net::kTickMillis), 1e-9);
+    CHECK_NEAR(breakSlot(rig, 1), std::max(leafReload * 0.79, net::kTickMillis), 1e-9);
 
     // Leaves stack, each on what the others left: an ultra and a common keep
-    // 82.5% of 97.5%. And they stack with the Reload talent, multiplied.
+    // 79% of 97%. And they stack with the Reload talent, multiplied.
     Rig both;
     both.world.add<PlayerSkillTree>(both.player);
     both.world.get<PlayerSkillTree>(both.player)
@@ -1719,12 +1719,12 @@ TEST(a_golden_leaf_cuts_the_reload_of_the_rest_of_its_bar) {
     both.equip(1, "golden_leaf", Rarity::Ultra);
     both.equip(2, "golden_leaf", Rarity::Common);
     both.settleEquips();
-    CHECK_NEAR(breakSlot(both, 0), 324.0 * 0.825 * 0.975, 1e-9);
+    CHECK_NEAR(breakSlot(both, 0), 324.0 * 0.79 * 0.97, 1e-9);
     // And a leaf's reload is cut by the other leaf as well as by itself.
     const double commonLeafReload =
         registry.petalStats(petalId("golden_leaf"), Rarity::Common).reloadMillis;
     CHECK_NEAR(breakSlot(both, 2),
-               std::max(commonLeafReload * 0.270 * 0.825 * 0.975, net::kTickMillis), 1e-9);
+               std::max(commonLeafReload * 0.270 * 0.79 * 0.97, net::kTickMillis), 1e-9);
 }
 
 TEST(partial_damage_does_not_break_a_petal) {

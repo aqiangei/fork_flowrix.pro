@@ -22,7 +22,7 @@ namespace flix::net {
 using ConnectionId = std::uint32_t;
 
 /// Bumped whenever any message layout in this file changes.
-inline constexpr std::uint16_t kProtocolVersion = 69;
+inline constexpr std::uint16_t kProtocolVersion = 70;
 
 /// "Not one of the rotating store's cards": a purchase at the full ladder
 /// price. Any other value is a slot index the server checks against the offers
@@ -90,9 +90,7 @@ enum class ClientMessage : std::uint8_t {
                         ///< full-price catalogue purchase; it is a claim about
                         ///< the card, never about the price.
     SetSkin,            ///< u32 renderFlags
-    RequestLeaderboard, ///< bool includeAdmins -- the TypeScript client's
-                        ///< `?includeAdmins=true`, and sent as that was, from
-                        ///< the "Show Admins on Leaderboard" switch, for anyone.
+    RequestLeaderboard, ///< bool includeAdmins, bool rankByKills.
     RedeemCode,         ///< str code -- a star code, checked server-side
     PublishSkin,        ///< str name, u8 shapeCount, { SkinShape }*  (skin_format.h)
     EquipSkin,          ///< str skinId -- empty takes the current skin off
@@ -265,10 +263,9 @@ enum class ServerMessage : std::uint8_t {
                         ///< `petalsReturned` the sub-batch tail (0-4) handed
                         ///< back, which is what the ring's surviving slots
                         ///< are drawn from.
-    Leaderboard,        ///< u8 count, u32 totalAccounts, u32 dailyActiveUsers,
-                        ///< { str name, u16 level, f64 totalXp }*.
-                        ///< `dailyActiveUsers` is 0 for a non-admin, where the
-                        ///< TypeScript server's payload left the field out.
+    Leaderboard,        ///< bool rankByKills, u8 count, u32 totalAccounts, u32 dailyActiveUsers,
+                        ///< { str name, u16 level, (u64 kills or f64 totalXp) }*.
+                        ///< dailyActiveUsers is 0 for a non-admin.
     Pong,               ///< u64 clientTimeMillis, u64 serverTimeMillis
     Kick,               ///< str reason. Never sent: this server says why it is
                         ///< done with a connection in the message the occasion

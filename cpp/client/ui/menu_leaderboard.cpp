@@ -21,7 +21,7 @@ namespace {
 
 /// The card is a fixed 500x500 pinned under the top icon row, and every metric
 /// here is measured off it rather than off the window.
-constexpr double kHeaderHeight = 50.0;   ///< chrome above the scrolling body
+constexpr double kHeaderHeight = 84.0;   ///< chrome above the scrolling body
 constexpr double kRowHeight = 40.0;
 constexpr double kColumnHeader = 30.0;
 constexpr double kScrollbarWidth = 10.0;
@@ -96,13 +96,15 @@ bool LeaderboardPanel::render(MenuContext& ctx) {
 
     // Asked for on the way in rather than every frame: the server walks its
     // whole account table to answer, and the board does not move that fast.
+    const bool zh = language() == Language::Zh;
     if (!requested_) {
         requested_ = true;
-        ctx.net.requestLeaderboard(ctx.settings.showAdminsOnLeaderboard);
+        ctx.net.requestLeaderboard(ctx.settings.showAdminsOnLeaderboard, rankByKills_);
     }
 
     const std::vector<LeaderboardRow>& rows = ctx.net.leaderboard();
     const bool pending = ctx.net.leaderboardPending();
+    const Rect rankModeRect{panel.x + 12.0, panel.y + 49.0, 120.0, 26.0};
 
     const Rect closeRect = closeButtonRect(panel);
     const Rect refreshRect{panel.right() - 140.0, panel.y + 10.0, 80.0, 30.0};
@@ -140,8 +142,12 @@ bool LeaderboardPanel::render(MenuContext& ctx) {
     if (ctx.pressed()) {
         if (closeRect.contains(mouse)) {
             closing = true;
+        } else if (rankModeRect.contains(mouse)) {
+            rankByKills_ = !rankByKills_;
+            scroll_.offset = 0;
+            ctx.net.requestLeaderboard(ctx.settings.showAdminsOnLeaderboard, rankByKills_);
         } else if (refreshRect.contains(mouse)) {
-            ctx.net.requestLeaderboard(ctx.settings.showAdminsOnLeaderboard);
+            ctx.net.requestLeaderboard(ctx.settings.showAdminsOnLeaderboard, rankByKills_);
         } else if (scrollable && bar.contains(mouse)) {
             drag.active = true;
             drag.anchorY = mouse.y;
@@ -181,6 +187,9 @@ bool LeaderboardPanel::render(MenuContext& ctx) {
     }
 
     pillButton(canvas, refreshRect, tipRefresh(), kLeaderboardSkin.border);
+    pillButton(canvas, rankModeRect, rankByKills_ ? (zh ? "经验榜" : "XP ranking")
+                                                  : (zh ? "击杀榜" : "Kill ranking"),
+               kLeaderboardSkin.border);
     panelClose(canvas, closeRect, closeRect.contains(mouse));
 
     canvas.save();
@@ -213,7 +222,7 @@ bool LeaderboardPanel::render(MenuContext& ctx) {
         textAtAlpha(canvas, "Player", nameX, y + 8.0, header, 0.8);
         textAtAlpha(canvas, "Level", levelX, y + 8.0, header, 0.8);
         header.align = Align::Right;
-        textAtAlpha(canvas, "XP", xpX, y + 8.0, header, 0.8);
+        textAtAlpha(canvas, rankByKills_ ? (zh ? "击杀数" : "Kills") : "XP", xpX, y + 8.0, header, 0.8);
         y += kColumnHeader;
 
         for (std::size_t i = 0; i < rows.size(); ++i) {
@@ -245,7 +254,9 @@ bool LeaderboardPanel::render(MenuContext& ctx) {
 
             cell.align = Align::Right;
             cell.size = 13.0;
-            textAtAlpha(canvas, formatXp(rows[i].totalXp), xpX, middle, cell, 0.8);
+            const std::string value = rankByKills_ ? std::to_string(rows[i].kills)
+                                                   : formatXp(rows[i].totalXp);
+            textAtAlpha(canvas, value, xpX, middle, cell, 0.8);
         }
     }
     canvas.restore();

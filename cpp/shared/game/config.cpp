@@ -1083,7 +1083,7 @@ MobConfig parseMob(Ctx& ctx, const std::string& id, const Json& src,
         m.petDamageScale = 0.5;
     }
     if (id == "centipede" || id == "desert_centipede" || id == "evil_centipede" ||
-        id == "leech") {
+        id == "hel_centipede" || id == "leech") {
         m.segmentBodyIndex = ctx.link(mobIds, id + "_body", "body segment");
         m.segmentCount = m.segmentBodyIndex != kInvalidIndex ? kCentipedeSegmentCount : 0;
     }
@@ -1093,7 +1093,7 @@ MobConfig parseMob(Ctx& ctx, const std::string& id, const Json& src,
     m.sharedSegmentHealth = id == "leech" || id == "leech_body";
     // gardn's centipedes are bodies like any other; see MobConfig::gardnChain.
     // The beads carry it too: they are what collides and what gets pushed.
-    for (const char* centipede : {"centipede", "desert_centipede", "evil_centipede"}) {
+    for (const char* centipede : {"centipede", "desert_centipede", "evil_centipede", "hel_centipede"}) {
         if (id == centipede || id == std::string(centipede) + "_body") m.gardnChain = true;
     }
 
@@ -1940,7 +1940,7 @@ PetalStats buildPetalStats(const PetalConfig& c, Rarity r) {
     // mythic and 50% at ultra, the two tiers florr makes it at.
     if (petalBoostsHealing(c)) s.healBonus = 0.2 + 0.05 * rarityIndex(tier);
     // Golden leaf: florr's Reload -2.5% at common and 2.5% more a tier.
-    if (petalCutsReload(c)) s.reloadCut = 0.025 * (rarityIndex(tier) + 1);
+    if (petalCutsReload(c)) s.reloadCut = 0.03 * (rarityIndex(tier) + 1);
     // Disc: florr's Collision Damage Resistance, 1 - 0.91^(tier+1) -- one more
     // 0.91 of the hit kept back a tier, so no tier ever reaches immunity.
     if (petalResistsCollisions(c)) s.collisionResist = 1.0 - std::pow(0.91, rarityIndex(tier) + 1);

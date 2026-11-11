@@ -604,11 +604,14 @@ void NetClient::deleteSkin(const std::string& id) {
     send(w);
 }
 
-void NetClient::requestLeaderboard(bool includeAdmins) {
+void NetClient::requestLeaderboard(bool includeAdmins, bool rankByKills) {
+    if (leaderboardKills_ != rankByKills) leaderboard_.clear();
+    leaderboardKills_ = rankByKills;
     leaderboardPending_ = true;
     ByteWriter w;
     beginMessage(w, net::ClientMessage::RequestLeaderboard);
     w.boolean(includeAdmins);
+    w.boolean(rankByKills);
     send(w);
 }
 
@@ -1579,6 +1582,7 @@ void NetClient::handleSetUsernameResult(ByteReader& reader) {
 
 void NetClient::handleLeaderboard(ByteReader& reader) {
     std::vector<LeaderboardRow> rows;
+    const bool rankByKills = reader.boolean();
     const std::uint8_t count = reader.u8();
     const std::uint32_t total = reader.u32();
     const std::uint32_t dau = reader.u32();
@@ -1587,10 +1591,11 @@ void NetClient::handleLeaderboard(ByteReader& reader) {
         LeaderboardRow row;
         row.name = reader.str();
         row.level = reader.u16();
-        row.totalXp = reader.f64();
+        if (rankByKills) row.kills = reader.u64();
+        else row.totalXp = reader.f64();
         rows.push_back(std::move(row));
     }
-    if (!reader.ok()) return;
+    if (!reader.ok() || rankByKills != leaderboardKills_) return;
     leaderboard_ = std::move(rows);
     totalAccounts_ = total;
     dailyActiveUsers_ = dau;

@@ -4460,12 +4460,14 @@ void GameServer::foldLookAlikeSkins() {
 void GameServer::handleLeaderboard(const Session& session, net::Connection& connection,
                                    ByteReader& reader) {
     const bool includeAdmins = reader.boolean();
+    const bool rankByKills = reader.boolean();
     if (!reader.ok()) return;
     // Ranked over ACCOUNTS, not over the players currently online: the board is
     // a record of progress, and a top player who logged off has not lost it.
     struct Row {
         const std::string* name;
         double totalXp;
+        std::uint64_t kills;
     };
     std::vector<Row> rows;
     rows.reserve(database_.userCount());
@@ -4483,7 +4485,17 @@ void GameServer::handleLeaderboard(const Session& session, net::Connection& conn
         // and XP, which the board shows for everyone else anyway.
         if (account->admin && !includeAdmins) continue;
         const PlayerRecord* record = accounts.findProgress(account->id);
-        rows.push_back({&account->username, record ? record->totalXp : 0.0});
+        std::uint64_t kills = 0;
+        if (rankByKills) {
+            if (record == nullptr) continue;
+            for (const auto& mob : record->mobKills.members()) {
+                for (const auto& tier : mob.second.members()) {
+                    kills += static_cast<std::uint64_t>(std::max<std::int64_t>(0, tier.second.asInt64()));
+                }
+            }
+            if (kills == 0) continue;
+        }
+        rows.push_back({&account->username, record ? record->totalXp : 0.0, kills});
     }
 
     // The browser client asks for limit=50 and the panel scrolls all fifty;
@@ -4491,7 +4503,11 @@ void GameServer::handleLeaderboard(const Session& session, net::Connection& conn
     constexpr std::size_t kRows = 50;
     const std::size_t shown = std::min(kRows, rows.size());
     std::partial_sort(rows.begin(), rows.begin() + static_cast<long>(shown), rows.end(),
-                      [](const Row& a, const Row& b) { return a.totalXp > b.totalXp; });
+                      [rankByKills](const Row& a, const Row& b) {
+                          if (rankByKills && a.kills != b.kills) return a.kills > b.kills;
+                          if (a.totalXp != b.totalXp) return a.totalXp > b.totalXp;
+                          return *a.name < *b.name;
+                      });
 
     // The count beside the title is over every account, not over the 50 rows
     // sent. The active-today figure rides along only for an admin, which is
@@ -4509,13 +4525,15 @@ void GameServer::handleLeaderboard(const Session& session, net::Connection& conn
 
     ByteWriter w;
     w.u8(static_cast<std::uint8_t>(net::ServerMessage::Leaderboard));
+    w.boolean(rankByKills);
     w.u8(static_cast<std::uint8_t>(shown));
     w.u32(static_cast<std::uint32_t>(database_.userCount()));
     w.u32(activeToday);
     for (std::size_t i = 0; i < shown; ++i) {
         w.str(*rows[i].name);
         w.u16(static_cast<std::uint16_t>(levelFromTotalXp(rows[i].totalXp).level));
-        w.f64(rows[i].totalXp);
+        if (rankByKills) w.u64(rows[i].kills);
+        else w.f64(rows[i].totalXp);
     }
     connection.send(w);
 }

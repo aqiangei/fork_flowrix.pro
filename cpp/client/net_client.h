@@ -122,6 +122,7 @@ struct LeaderboardRow {
     std::string name;
     int level = 1;
     double totalXp = 0;
+    std::uint64_t kills = 0;
 };
 
 /// One entry of the global notification feed.
@@ -715,7 +716,7 @@ public:
     void deleteSkin(const std::string& id);
     /// `includeAdmins` is the "Show Admins on Leaderboard" switch: without it
     /// the server leaves admin accounts off the board.
-    void requestLeaderboard(bool includeAdmins = false);
+    void requestLeaderboard(bool includeAdmins = false, bool rankByKills = false);
     /// Asks for one page of the global notification feed, newest first.
     /// `beforeMillis` of 0 asks for the newest page; anything else pages back
     /// past the oldest entry already held, as the browser's `?before=` does.
@@ -1170,6 +1171,7 @@ private:
 
     std::vector<LeaderboardRow> leaderboard_;
     bool leaderboardPending_ = false;
+    bool leaderboardKills_ = false;
     std::uint32_t totalAccounts_ = 0;
     std::uint32_t dailyActiveUsers_ = 0;
 

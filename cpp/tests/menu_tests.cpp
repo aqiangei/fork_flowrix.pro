@@ -1077,6 +1077,17 @@ TEST(the_leaderboard_ranks_accounts_by_lifetime_xp) {
     Harness h("board", [](const std::string& path) {
         seedAccount(path, "small", "password7", 0, 10);
         seedAccount(path, "large", "password7", 0, 900000);
+        Database db;
+        std::string error;
+        CHECK(db.load(path, error));
+        const Account* small = db.findUser("small");
+        const Account* large = db.findUser("large");
+        if (small == nullptr || large == nullptr) { CHECK(false); return; }
+        db.progress(small->id).mobKills = Json::parseOrNull(
+            R"({"bee":{"common":20,"rare":5},"ladybug":{"common":2}})");
+        db.progress(large->id).mobKills = Json::parseOrNull(R"({"bee":{"common":3}})");
+        db.markDirty();
+        db.save();
     });
     if (!h.ready) { CHECK(false); return; }
 
@@ -1093,6 +1104,14 @@ TEST(the_leaderboard_ranks_accounts_by_lifetime_xp) {
     // The level travels with the row: the panel must not have to re-derive it
     // from XP with a curve that could drift from the server's.
     CHECK(client.leaderboard()[0].level > client.leaderboard()[1].level);
+
+    client.requestLeaderboard(false, true);
+    CHECK(h.stepUntil({&client}, [&] { return !client.leaderboardPending(); }, 200));
+    CHECK_EQ(client.leaderboard().size(), std::size_t(2));
+    if (client.leaderboard().size() != 2) return;
+    CHECK_EQ(client.leaderboard()[0].name, std::string("small"));
+    CHECK_EQ(client.leaderboard()[0].kills, std::uint64_t(27));
+    CHECK_EQ(client.leaderboard()[1].kills, std::uint64_t(3));
 }
 
 TEST(admins_rank_on_the_leaderboard_only_when_asked_for) {

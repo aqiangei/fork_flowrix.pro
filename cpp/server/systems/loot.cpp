@@ -534,6 +534,8 @@ void LootSystem::awardDeaths(World& world, const ContentRegistry& content, Rng& 
     // Once for the tick, not once per corpse: the conversion below asks for it
     // on every drop of every kill.
     const std::uint16_t magicOrb = content.petalIndex("magic_orb");
+    const std::uint16_t helBeetle = content.mobIndex("hel_beetle");
+    const std::uint16_t sacrifice = content.petalIndex("sacrifice");
     corpses_->collect(corpseList_);
     for (const Entity corpse : corpseList_) {
         const MobType* type = world.tryGet<MobType>(corpse);
@@ -700,6 +702,18 @@ void LootSystem::awardDeaths(World& world, const ContentRegistry& content, Rng& 
                         spawnDrop(world, groupPetal, groupRarity, at + scatter, realm, orbGroup_);
                     if (dropped != NULL_ENTITY) fresh_.push_back(dropped);
                 }
+            }
+        }
+
+        // Blood sacrifice rolls independently of the ordinary loot and its Apex copies.
+        if (mobIndex == helBeetle && sacrifice != kInvalidIndex &&
+            mobRarity >= Rarity::Ultra && mobRarity <= Rarity::Apex) {
+            constexpr double chance[] = {0.02, 0.04, 0.06, 0.10};
+            if (rng.chance(chance[rarityIndex(mobRarity) - rarityIndex(Rarity::Ultra)])) {
+                const Vec2 scatter{rng.range(-50.0, 50.0), rng.range(-50.0, 50.0)};
+                const Entity drop =
+                    spawnDrop(world, sacrifice, Rarity::Apex, at + scatter, realm, eligible_);
+                if (drop != NULL_ENTITY) fresh_.push_back(drop);
             }
         }
 

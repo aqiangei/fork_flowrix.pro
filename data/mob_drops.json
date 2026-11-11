@@ -1628,5 +1628,47 @@
         "maxQuantity": 1
       }
     ]
+  },
+  "hel_centipede": {
+    "guaranteed": true,
+    "drops": [
+      {
+        "type": "petal",
+        "itemType": "bone",
+        "rarity": "common",
+        "probability": 0.35,
+        "minQuantity": 1,
+        "maxQuantity": 1
+      },
+      {
+        "type": "petal",
+        "itemType": "peas",
+        "rarity": "common",
+        "probability": 0.35,
+        "minQuantity": 1,
+        "maxQuantity": 1
+      }
+    ]
+  },
+  "gambler": {
+    "guaranteed": true,
+    "drops": [
+      {
+        "type": "petal",
+        "itemType": "coin",
+        "rarity": "common",
+        "probability": 0.4,
+        "minQuantity": 1,
+        "maxQuantity": 1
+      },
+      {
+        "type": "petal",
+        "itemType": "bone",
+        "rarity": "common",
+        "probability": 0.25,
+        "minQuantity": 1,
+        "maxQuantity": 1
+      }
+    ]
   }
 }

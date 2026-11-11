@@ -1878,3 +1878,16 @@ TEST(admin_golden_leaf_stacks_cannot_erase_reload_times) {
         return EquippedPetal{leaf, Rarity::Admin, Rarity::Admin};
     }), 0.5, 1e-9);
 }
+
+TEST(hel_has_a_distinct_gambler_and_centipede_chain) {
+    const ContentRegistry& content = shipped().registry;
+    const auto gambler = content.mobIndex("gambler");
+    const auto head = content.mobIndex("hel_centipede");
+    const auto body = content.mobIndex("hel_centipede_body");
+    CHECK(gambler != kInvalidIndex && head != kInvalidIndex && body != kInvalidIndex);
+    if (gambler == kInvalidIndex || head == kInvalidIndex || body == kInvalidIndex) return;
+    CHECK(content.mob(gambler).jump.distance > 0.0);
+    CHECK(content.mob(head).segmentCount > 0);
+    CHECK_EQ(content.mob(head).segmentBodyIndex, body);
+    CHECK(content.mob(body).noEggDrop);
+}
