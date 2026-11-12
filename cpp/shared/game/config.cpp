@@ -1780,7 +1780,7 @@ std::uint16_t ContentRegistry::petalIndex(const std::string& id) const {
 
 MobStats ContentRegistry::mobStats(std::uint16_t index, Rarity r) const {
     const MobConfig& c = mob(index);
-    // No mob is universal; one asked for anyway is an apex.
+    // Universal summons use the Apex ladder with stronger base combat stats.
     const int tier = ladderIndex(clampRarity(rarityIndex(r)));
     const std::size_t t = static_cast<std::size_t>(tier);
 
@@ -1790,8 +1790,9 @@ MobStats ContentRegistry::mobStats(std::uint16_t index, Rarity r) const {
     // than a bee does, without becoming a wall.
     // Apex keeps its existing aggro range, but takes up less room in narrow bands.
     const double scaledSize = c.size * kMobSizeScale[t] * (tier == ladderIndex(Rarity::Apex) ? 0.85 : 1.0);
-    s.health = c.health * kMobHealthScale[t];
-    s.damage = c.damage * kMobDamageScale[t];
+    const double combatScale = r == Rarity::Universal ? 2.0 : 1.0;
+    s.health = c.health * kMobHealthScale[t] * combatScale;
+    s.damage = c.damage * kMobDamageScale[t] * combatScale;
     s.armor = c.armor * kMobArmorScale[t];
     s.evasion = c.evasion;
     s.radius = scaledSize * kMobBaseRadius;

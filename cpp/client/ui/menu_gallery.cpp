@@ -93,7 +93,7 @@ constexpr double kIconInset = kCellRim * 0.5 + 2.0;
 
 /// Every rung of the ladder is a column, apex included: a biome's apex clock
 /// puts one in the world now and then, and it is the rarest cell on the
-/// sheet. Universal is above the ladder, and no mob is ever that.
+/// sheet. Universal summons use the Apex drop tier.
 ///
 /// The regular drop table stops at unique. The Apex bonus roll is
 /// listed separately in the mob tooltip.

@@ -71,7 +71,7 @@ inline constexpr std::uint32_t rarityColor(Rarity r) {
 /// Universal sits above the ladder: it is forged at the titan or given by
 /// an operator. Admin sits above Universal and is created only by `give`.
 /// Neither tier drops, crafts through the ladder, or trades in the shop.
-/// Universal reads utility at apex and boosts base health and damage fivefold;
+/// Universal petals read utility at apex and boost base health and damage fivefold;
 /// Admin has its own boosts in buildPetalStats.
 inline constexpr Rarity kTopLadderRarity = Rarity::Apex;
 inline constexpr int kLadderRarityCount = rarityIndex(kTopLadderRarity) + 1;

@@ -79,7 +79,7 @@ inline Bounty::Share refreshedShare(World& world, Bounty::Share share) {
 inline int lootSlotsForRarity(Rarity rarity) {
     if (rarity == Rarity::Ultra) return 15;
     if (rarity == Rarity::Super) return 20;
-    if (rarity == Rarity::Unique || rarity == Rarity::Apex) return 25;
+    if (rarity >= Rarity::Unique && rarity <= Rarity::Universal) return 25;
     return 4;
 }
 

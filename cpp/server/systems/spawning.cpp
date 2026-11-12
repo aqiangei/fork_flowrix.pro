@@ -573,18 +573,13 @@ SpawnSystem::Sacrifice SpawnSystem::planSacrifice(World& world, const ContentReg
     if (zone == nullptr) return Sacrifice{SacrificeOutcome::NoBand};
     if (!groundTakesSacrifice(zone->difficulty)) return Sacrifice{SacrificeOutcome::LowGround};
 
-    rarity = ladderRarity(rarity);
+    if (rarity != Rarity::Universal) rarity = ladderRarity(rarity);
     // A prestige biome raises the summons a tier as it raises every mob, and
     // refuses a unique or an apex outright.
     if (prestigeRealm(realm)) {
         if (barredFromPrestige(rarity)) return Sacrifice{SacrificeOutcome::Prestige};
         rarity = prestigeRarity(rarity);
     }
-    if ((rarity == Rarity::Unique || rarity == Rarity::Apex) &&
-        topBossTaken(world, rarity, realm)) {
-        return Sacrifice{SacrificeOutcome::Taken};
-    }
-
     // A few rolls, because a band may name a permanent fixture outright -- the
     // target dummy -- and a DPS post is not a mob to fight.
     std::uint16_t type = kInvalidIndex;
@@ -597,10 +592,12 @@ SpawnSystem::Sacrifice SpawnSystem::planSacrifice(World& world, const ContentReg
     Sacrifice plan{SacrificeOutcome::Summoned};
     plan.mobIndex = type;
     // The tier it will actually stand at, the mob's own floor included.
-    plan.rarity =
-        clampLadderRarity(std::max(rarityIndex(rarity), rarityIndex(content.mob(type).minRarity)));
+    plan.rarity = std::max(rarity, content.mob(type).minRarity);
     if (barredFromPrestige(plan.rarity) && prestigeRealm(realm)) {
         return Sacrifice{SacrificeOutcome::Prestige};
+    }
+    if (plan.rarity >= Rarity::Unique && topBossTaken(world, plan.rarity, realm)) {
+        plan.outcome = SacrificeOutcome::Taken;
     }
     return plan;
 }
@@ -614,7 +611,8 @@ Entity SpawnSystem::spawnSacrifice(World& world, const Terrain& terrain,
     // Nobody's band: the summon is not part of any band's population, and like
     // every boss it stays live wherever it stands.
     const Entity mob = spawnMobAt(world, terrain, content, plan.mobIndex, plan.rarity, at, realm,
-                                  nowMillis, rng, 0, kInvalidIndex, std::nullopt, false);
+                                  nowMillis, rng, 0, kInvalidIndex, std::nullopt,
+                                  /*clockGated=*/false, /*allowUniversal=*/true);
     if (mob != NULL_ENTITY) chargeBossClock(plan.rarity, realm, nowMillis);
     return mob;
 }
@@ -663,16 +661,14 @@ bool SpawnSystem::randomBandPoint(const Terrain& terrain, Realm realm, Rng& rng,
 Entity SpawnSystem::spawnMobAt(World& world, const Terrain& terrain, const ContentRegistry& content,
                                std::uint16_t mobIndex, Rarity rarity, Vec2 position, Realm realm,
                                double nowMillis, Rng& rng, int depth, std::uint16_t zone,
-                               std::optional<double> facing, bool clockGated) {
+                               std::optional<double> facing, bool clockGated,
+                               bool allowUniversal) {
     if (mobIndex >= content.mobCount()) return NULL_ENTITY;
 
     const MobConfig& config = content.mob(mobIndex);
-    // A mob does not exist below its min_rarity, whoever asked for it -- nor
-    // above apex: universal is a petal tier, and a console `spawn bee
-    // universal` or a nest's offset past the top comes out an apex. Enforced
-    // here rather than at each call site so a nest, a script and the ambient
-    // roll cannot disagree about it.
-    rarity = clampLadderRarity(std::max(rarityIndex(rarity), rarityIndex(config.minRarity)));
+    // Only a sacrifice and its chain segments can exceed the mob ladder.
+    rarity = std::max(rarity, config.minRarity);
+    if (!allowUniversal || rarity != Rarity::Universal) rarity = ladderRarity(rarity);
 
     // A prestige biome has no boss clocks and never fields a unique or an
     // apex, whoever asks -- the console and a sacrifice included, which is why
@@ -894,7 +890,9 @@ void SpawnSystem::spawnBodyChain(World& world, const Terrain& terrain,
         // thing the band counted, and the chain is rebuilt from scratch every
         // time that head comes back to life.
         const Entity segment = spawnMobAt(world, terrain, content, config.segmentBodyIndex, rarity,
-                                          at, realm, nowMillis, rng, depth, kInvalidIndex);
+                                          at, realm, nowMillis, rng, depth, kInvalidIndex,
+                                          std::nullopt, /*clockGated=*/true,
+                                          /*allowUniversal=*/rarity == Rarity::Universal);
         if (segment == NULL_ENTITY) break;
 
         BodySegment link;
@@ -1794,7 +1792,7 @@ void SpawnSystem::noteStandingBosses(World& world, const CommandBuffer& commands
     topBosses_.clear();
     ambient_->each([&](Entity e, MobTag&, Transform& transform, Body&, MobType& type,
                        AmbientMob& ambient) {
-        if (type.rarity != Rarity::Unique && type.rarity != Rarity::Apex) return;
+        if (type.rarity < Rarity::Unique || type.rarity > Rarity::Universal) return;
         if (!isWorldRealm(transform.realm) || !isWholeAnimal(world, e)) return;
         topBosses_.push_back(TopBoss{biomeKey(transform.realm), type.rarity, ambient.spawnOrder, e});
     });
@@ -1825,7 +1823,7 @@ void SpawnSystem::cullExtraTopBosses(World& world, CommandBuffer& commands,
     culled_.clear();
     const auto shouldCull = [&](const TopBoss& boss) {
         if (commands.destroying(boss.entity)) return true;
-        if (boss.rarity != Rarity::Apex) return false;
+        if (boss.rarity < Rarity::Apex) return false;
         const Health* health = world.tryGet<Health>(boss.entity);
         if (health == nullptr) return false;
         auto& ambient = world.get<AmbientMob>(boss.entity);

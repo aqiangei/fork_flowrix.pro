@@ -182,10 +182,12 @@ void GameServer::offerSacrifice(Session& session, Entity corpse) {
     // far as a second sacrifice in the same map is concerned: two would both
     // summon, and the later would be culled as the biome's second.
     if (plan.outcome == SpawnSystem::SacrificeOutcome::Summoned &&
-        (plan.rarity == Rarity::Unique || plan.rarity == Rarity::Apex)) {
+        plan.rarity >= Rarity::Unique) {
+        const std::string biome = biomeOfRealm(realm);
         Query<SacrificeRitual, Transform> rituals{world_};
         rituals.each([&](Entity, SacrificeRitual& ritual, Transform& at) {
-            if (ritual.mob == NULL_ENTITY && ritual.rarity == plan.rarity && at.realm == realm) {
+            if (ritual.mob == NULL_ENTITY && ritual.rarity == plan.rarity &&
+                (at.realm == realm || (!biome.empty() && biomeOfRealm(at.realm) == biome))) {
                 plan.outcome = SpawnSystem::SacrificeOutcome::Taken;
             }
         });
@@ -202,11 +204,11 @@ void GameServer::offerSacrifice(Session& session, Entity corpse) {
                 break;
             case SpawnSystem::SacrificeOutcome::Prestige:
                 why = "Your " + petalName +
-                      " went unanswered: no Unique or Apex can stand in a Prestige biome.";
+                      " went unanswered: Unique and higher cannot stand in a Prestige biome.";
                 break;
             case SpawnSystem::SacrificeOutcome::Taken:
-                why = "Your " + petalName + " went unanswered: an " +
-                      rarityLabel(ladderRarity(tier)) + " already roams this biome.";
+                why = "Your " + petalName + " went unanswered: this biome already has a " +
+                      rarityLabel(plan.rarity) + " boss.";
                 break;
             default:
                 why = "Your " + petalName + " went unanswered: nothing lives here.";

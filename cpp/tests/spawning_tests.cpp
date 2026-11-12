@@ -2091,14 +2091,36 @@ TEST(a_sacrifice_summons_a_mob_of_its_band_at_its_tier_past_a_cooling_clock) {
     CHECK_EQ(world.sim.spawner.bossSpawns.size(), std::size_t(1));
     CHECK_EQ(onlyClock(world.sim).apexReadyMillis, world.sim.now + kApexSpawnCooldownMillis);
 
-    // A universal sacrifice summons at the top of the ladder.
-    SuperBand other;
-    other.deal();
-    const SpawnSystem::Sacrifice universal = other.sim.spawner.summonSacrifice(
-        other.sim.world, other.sim.terrain, shipped(), Rarity::Universal, at, Realm::Overworld,
-        other.sim.now, other.sim.rng);
+    // A Universal sacrifice preserves its tier even with an Apex already standing.
+    const SpawnSystem::Sacrifice universal = world.sim.spawner.summonSacrifice(
+        world.sim.world, world.sim.terrain, shipped(), Rarity::Universal, at, Realm::Overworld,
+        world.sim.now, world.sim.rng);
     CHECK(universal.outcome == SpawnSystem::SacrificeOutcome::Summoned);
-    CHECK(other.sim.world.get<MobType>(universal.mob).rarity == Rarity::Apex);
+    if (universal.mob == NULL_ENTITY) { CHECK(false); return; }
+    CHECK(world.sim.world.get<MobType>(universal.mob).rarity == Rarity::Universal);
+    CHECK(world.sim.world.get<Replicated>(universal.mob).rarity == Rarity::Universal);
+    CHECK(world.sim.spawner.planSacrifice(world.sim.world, shipped(), Rarity::Universal, at,
+                                          Realm::Overworld, world.sim.rng).outcome ==
+          SpawnSystem::SacrificeOutcome::Taken);
+}
+
+TEST(a_universal_sacrifice_keeps_the_centipede_body_at_its_tier) {
+    Sim sim;
+    SpawnSystem::Sacrifice plan{SpawnSystem::SacrificeOutcome::Summoned};
+    plan.mobIndex = shipped().mobIndex("hel_centipede");
+    plan.rarity = Rarity::Universal;
+    const Entity head = sim.spawner.spawnSacrifice(sim.world, sim.terrain, shipped(),
+        plan, kCentre, Realm::Overworld, sim.now, sim.rng);
+    CHECK(head != NULL_ENTITY);
+    if (head == NULL_ENTITY) return;
+    int bodies = 0;
+    Query<BodySegment, MobType, Replicated> segments{sim.world};
+    segments.each([&](Entity e, BodySegment& segment, MobType& type, Replicated& replicated) {
+        if (e != head && segment.chainHead == head) ++bodies;
+        CHECK(type.rarity == Rarity::Universal);
+        CHECK(replicated.rarity == Rarity::Universal);
+    });
+    CHECK(bodies > 0);
 }
 
 TEST(a_sacrifice_is_turned_away_by_low_ground_by_no_ground_and_by_a_standing_apex) {

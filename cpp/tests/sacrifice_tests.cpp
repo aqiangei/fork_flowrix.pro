@@ -66,16 +66,17 @@ bool overworldBandPoint(const GameServer& server, bool rough, Vec2& out) {
     return false;
 }
 
-/// Wears an apex sacrifice in slot 0, the way a player does.
-bool wearSacrifice(Harness& h, NetClient& client, const char* account, std::uint16_t sacrifice) {
+/// Wears a sacrifice in slot 0, the way a player does.
+bool wearSacrifice(Harness& h, NetClient& client, const char* account, std::uint16_t sacrifice,
+                   Rarity rarity = Rarity::Apex) {
     if (!h.server.grantAdmin(client.sessionToken())) return false;
-    client.sendChat(std::string("/admin give ") + account + " sacrifice apex 1");
+    client.sendChat(std::string("/admin give ") + account + " sacrifice " + rarityName(rarity) + " 1");
     if (!h.stepUntil({&client}, [&] {
-            return client.profile().stackCount(sacrifice, Rarity::Apex) > 0;
+            return client.profile().stackCount(sacrifice, rarity) > 0;
         })) {
         return false;
     }
-    client.setLoadoutSlot(0, sacrifice, Rarity::Apex);
+    client.setLoadoutSlot(0, sacrifice, rarity);
     return h.stepUntil({&client}, [&] {
         return !client.profile().loadout.empty() &&
                client.profile().loadout[0].petalIndex == sacrifice;
@@ -125,6 +126,15 @@ TEST(dying_with_a_sacrifice_on_rough_ground_summons_an_apex_there_and_spends_it)
     Vec2 at;
     if (!overworldBandPoint(h.server, true, at)) { CHECK(false); return; }
     world.get<Transform>(body).position = at;
+    // Natural Apex spawns can already occupy the biome even when none are near
+    // the player. Clear them so this exercises a summon into an open slot.
+    Query<MobTag, MobType, Transform> mobs{world};
+    std::vector<Entity> standingApex;
+    mobs.each([&](Entity e, MobTag&, MobType& mob, Transform& transform) {
+        if (mob.rarity == Rarity::Apex && transform.realm == Realm::Overworld)
+            standingApex.push_back(e);
+    });
+    for (Entity e : standingApex) world.destroy(e);
     CHECK_EQ(apexMobsNear(world, at, 400.0), 0);
 
     const double killedAt = h.clock;
@@ -161,6 +171,37 @@ TEST(dying_with_a_sacrifice_on_rough_ground_summons_an_apex_there_and_spends_it)
     CHECK(world.isAlive(ritual));
     world.add<Dead>(answered.mob, Dead{NULL_ENTITY});
     CHECK(h.stepUntil({&alice}, [&] { return !world.isAlive(ritual); }, 10));
+}
+
+TEST(a_universal_sacrifice_replicates_a_universal_mob_to_the_client) {
+    Harness h("universal-sacrifice", {}, flix::testsupport::dataDir(), 0);
+    if (!h.ready) { CHECK(false); return; }
+    const auto sacrifice = content().petalIndex(kSacrificePetalId);
+    if (sacrifice == kInvalidIndex) { CHECK(false); return; }
+
+    NetClient alice;
+    CHECK(loginNew(h, alice, "alice", "hunter2!"));
+    alice.joinGame(1280, 720, {}, "alice");
+    CHECK(h.stepUntil({&alice}, [&] { return alice.status() == NetClient::Status::Playing; }));
+    CHECK(wearSacrifice(h, alice, "alice", sacrifice, Rarity::Universal));
+    World& world = h.server.world();
+    const Entity body = soleBody(world, "alice");
+    Vec2 at;
+    if (body == NULL_ENTITY || !overworldBandPoint(h.server, true, at)) {
+        CHECK(false);
+        return;
+    }
+    world.get<Transform>(body).position = at;
+    kill(world, body);
+    CHECK(h.stepUntil({&alice}, [&] {
+        for (const auto& row : alice.view().entities()) {
+            if (row.second.kind == net::EntityKind::Mob &&
+                row.second.rarity == Rarity::Universal &&
+                (row.second.spawnFlags & net::SpawnSacrificed) != 0) return true;
+        }
+        return false;
+    }, 240));
+    CHECK(!alice.profile().loadout.empty() && alice.profile().loadout[0].empty());
 }
 
 TEST(a_restart_during_a_sacrifice_hands_the_apex_clock_back) {

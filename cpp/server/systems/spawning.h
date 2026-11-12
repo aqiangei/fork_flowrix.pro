@@ -567,13 +567,12 @@ public:
                           const Sacrifice& plan, Vec2 at, Realm realm, double nowMillis, Rng& rng);
 
     /// A sacrifice spent at `at`: one mob of the band covering that spot,
-    /// rolled from the band's own distribution, at `rarity` (held to the
-    /// ladder, so a universal sacrifice summons an apex), placed where the
-    /// flower fell.
+    /// rolled from the band's distribution, at the sacrifice's tier, placed
+    /// where the flower fell. Universal is exclusive to this summon path.
     ///
     /// The one path past a cooling boss clock: the petal itself is the
     /// rationing, Hel handing out one at a time. It still keeps the biome to
-    /// one unique and one apex -- refused while one of that tier stands -- and
+    /// one of each boss tier from Unique up -- refused while one of that tier stands -- and
     /// it spends the clock as the console's spawn does, so the summon counts
     /// as the biome's boss for the next cooldown.
     Sacrifice summonSacrifice(World& world, const Terrain& terrain, const ContentRegistry& content,
@@ -956,7 +955,8 @@ private:
     Entity spawnMobAt(World& world, const Terrain& terrain, const ContentRegistry& content,
                       std::uint16_t mobIndex, Rarity rarity, Vec2 position, Realm realm,
                       double nowMillis, Rng& rng, int depth, std::uint16_t zone,
-                      std::optional<double> facing = std::nullopt, bool clockGated = true);
+                      std::optional<double> facing = std::nullopt, bool clockGated = true,
+                      bool allowUniversal = false);
 
     /// Lays a centipede's body out behind its head, each segment linked to the
     /// one in front. Driven from spawnMobAt so that every path to a head --

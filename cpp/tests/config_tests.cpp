@@ -501,15 +501,13 @@ TEST(a_universal_petal_has_five_times_apex_base_health_and_damage) {
     CHECK_NEAR(basic.health, 196830.0 * 6.25, 1e-6);
 }
 
-TEST(no_mob_is_universal) {
-    // Asked for a universal mob's numbers, the registry answers with apex's:
-    // the mob tables stop at the top of the ladder.
+TEST(universal_summons_double_apex_base_health_and_damage) {
     const ContentRegistry& r = shipped().registry;
     for (std::uint16_t i = 0; i < r.mobCount(); ++i) {
         const MobStats u = r.mobStats(i, Rarity::Universal);
         const MobStats a = r.mobStats(i, Rarity::Apex);
-        CHECK_NEAR(u.health, a.health, std::fabs(a.health) * 1e-12);
-        CHECK_NEAR(u.damage, a.damage, std::fabs(a.damage) * 1e-12);
+        CHECK_NEAR(u.health, a.health * 2.0, std::fabs(a.health) * 1e-12);
+        CHECK_NEAR(u.damage, a.damage * 2.0, std::fabs(a.damage) * 1e-12);
         CHECK_NEAR(u.radius, a.radius, 1e-9);
         CHECK_NEAR(u.xp, a.xp, 1e-9);
     }

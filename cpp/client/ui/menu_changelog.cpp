@@ -656,6 +656,9 @@ constexpr ChangelogEntry kChangelog[] = {
      {"冥界蜈蚣在常规刷怪池中的加权占比从约 15% 提高到约 28%",
       "冥界怪的基础移速提高 20%，甲虫追击和赌徒冲刺也加快",
       "AQA 私信收件箱每 5 秒刷新，最新来信自动排在前面"}},
+    {"2026年11月12日（宇宙血祭）",
+     {"宇宙血祭现在会召唤宇宙怪物，长身怪的体节也保留宇宙稀有度",
+      "召唤怪的基础生命和伤害为同种顶点的 2 倍，掉落沿用顶点规则"}},
 };
 
 constexpr int kEntryCount = static_cast<int>(sizeof(kChangelog) / sizeof(kChangelog[0]));

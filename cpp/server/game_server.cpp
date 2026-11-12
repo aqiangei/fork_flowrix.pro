@@ -3639,7 +3639,7 @@ void GameServer::bankKills() {
                              lootDamageFloor(health != nullptr ? health->max : 0.0));
 
         const std::string mobId = content().mob(type->configIndex).id;
-        const int stars = starsForKill(type->rarity);
+        const int stars = starsForKill(ladderRarity(type->rarity));
 
         paidAccounts.clear();
         for (const Bounty::Share& share : ranked) {
