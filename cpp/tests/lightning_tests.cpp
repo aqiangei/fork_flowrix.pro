@@ -9,6 +9,7 @@
 #include "shared/game/components.h"
 #include "shared/game/config.h"
 #include "shared/game/spatial.h"
+#include "shared/game/map_elements.h"
 #include "shared/net/protocol.h"
 
 #include <cmath>
@@ -363,16 +364,16 @@ struct Sim {
     void rebuildGrid() {
         grid.clear();
         collidable.each([&](Entity e, Transform& transform, Body& body) {
-            grid.insert(e, Realm::Overworld, transform.position, body.radius);
+            grid.insert(e, transform.realm, transform.position, body.radius);
         });
     }
 
     /// One whole tick, events cleared first so every assertion reads THIS
     /// tick's wire rather than the sum of every tick a test has run.
-    void step(double nowMillis, const ContentRegistry& content) {
+    void step(double nowMillis, const ContentRegistry& content, double dt = net::kTickSeconds) {
         events.clear();
         rebuildGrid();
-        combat.run(world, grid, content, nowMillis, net::kTickSeconds, commands, events);
+        combat.run(world, grid, content, nowMillis, dt, commands, events);
     }
 
     double health(Entity e) { return world.get<Health>(e).current; }
@@ -830,30 +831,51 @@ TEST(a_lightning_damage_petals_shot_hits_as_lightning_and_strikes_nothing_else) 
     CHECK_NEAR(sim.health(bystander), 500.0, 1e-9);
 }
 
-TEST(a_lightning_burst_reports_its_chip_as_lightning) {
-    Sim sim;
-    const SimContent& content = simContent();
-    const Entity player = sim.player({0, 0});
-    const Entity mob = sim.mob({100, 0}, content.inert, 0.0);
+TEST(a_lightning_burst_hits_hel_centipede_segments_once_at_any_tick_length) {
+    const ContentRegistry& content = testsupport::shippedContent();
+    CHECK(content.loaded());
+    if (!content.loaded()) return;
 
-    // A petal's strike leaves behind exactly this: a one-tick damage field,
-    // marked. Built by hand rather than by equipping a lightning cutter,
-    // because what is under test is the mark -- that the field's chip reaches
-    // the wire as a strike and not as a petal hit.
-    const Entity burst = sim.world.create();
-    sim.world.add<GroundEffectTag>(burst);
-    sim.world.add<Transform>(burst, Transform{{100, 0}, 0.0, Realm::Overworld});
-    sim.world.add<GroundEffect>(burst, GroundEffect{GroundEffectKind::Poison, player, 150.0, 0.0,
-                                                    1.0, Rarity::Common, 25.0, 0.0});
-    sim.world.add<Lifetime>(burst, Lifetime{net::kTickSeconds * 1.5});
-    sim.world.add<LightningBurst>(burst);
+    WorldMaps maps;
+    std::string error;
+    CHECK(maps.load(testsupport::dataDir(), nullptr, error));
+    bool found = false;
+    const Realm hel = maps.realmOfId("hel", found);
+    CHECK(found);
+    if (!found) return;
 
-    sim.step(10000.0, content.registry);
+    for (const double dt : {0.01, 0.08}) {
+        Sim sim;
+        const Entity player = sim.player({0, 0});
+        const Entity head = sim.mob({100, 0}, content.mobIndex("hel_centipede"), 0.0);
+        const Entity body = sim.mob({150, 0}, content.mobIndex("hel_centipede_body"), 0.0);
+        for (const Entity e : {player, head, body}) {
+            sim.world.get<Transform>(e).realm = hel;
+        }
+        BodySegment link;
+        link.ahead = head;
+        link.chainHead = head;
+        link.sharedHealth = false;
+        sim.world.add<BodySegment>(body, link);
 
-    CHECK_NEAR(sim.health(mob), 475.0, 1e-9);
-    const std::vector<const WireEvent*> cyan = sim.cyanNumbers();
-    CHECK_EQ(cyan.size(), std::size_t(1));
-    if (!cyan.empty()) CHECK_EQ(cyan[0]->netId, sim.world.get<NetId>(mob).value);
+        const Entity burst = sim.world.create();
+        sim.world.add<GroundEffectTag>(burst);
+        sim.world.add<Transform>(burst, Transform{{100, 0}, 0.0, hel});
+        sim.world.add<GroundEffect>(burst, GroundEffect{GroundEffectKind::Poison, player, 150.0,
+                                                        0.0, 1.0, Rarity::Common, 25.0, 0.0});
+        sim.world.add<Lifetime>(burst, Lifetime{net::kTickSeconds * 1.5});
+        sim.world.add<LightningBurst>(burst);
+
+        sim.step(10000.0, content, dt);
+        CHECK_NEAR(sim.health(head), 475.0, 1e-9);
+        CHECK_NEAR(sim.health(body), 475.0, 1e-9);
+        CHECK_EQ(sim.cyanNumbers().size(), std::size_t(2));
+
+        sim.step(10100.0, content, dt);
+        CHECK_NEAR(sim.health(head), 475.0, 1e-9);
+        CHECK_NEAR(sim.health(body), 475.0, 1e-9);
+        CHECK(sim.cyanNumbers().empty());
+    }
 }
 
 TEST(an_unmarked_burst_still_reports_an_ordinary_hit) {

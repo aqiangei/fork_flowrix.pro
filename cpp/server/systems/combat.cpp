@@ -2081,11 +2081,14 @@ void CombatSystem::tickGroundEffects(World& world, const SpatialGrid& grid,
 
     for (const FieldSource& field : fields_) {
         if (!world.isAlive(field.effect)) continue;
-        if (Lifetime* lifetime = world.tryGet<Lifetime>(field.effect)) {
-            lifetime->remainingSeconds -= dt;
-            if (lifetime->remainingSeconds <= 0.0) {
-                world.add<Dead>(field.effect);
-                continue;
+        const bool instantStrike = field.hitKind == DamageKind::Lightning;
+        if (!instantStrike) {
+            if (Lifetime* lifetime = world.tryGet<Lifetime>(field.effect)) {
+                lifetime->remainingSeconds -= dt;
+                if (lifetime->remainingSeconds <= 0.0) {
+                    world.add<Dead>(field.effect);
+                    continue;
+                }
             }
         }
         if (field.ownerPoisonPerSecond > 0.0 && field.poisonDurationMillis > 0.0) {
@@ -2158,6 +2161,9 @@ void CombatSystem::tickGroundEffects(World& world, const SpatialGrid& grid,
                           field.rarity, nowMillis);
             }
         }
+        // A petal strike resolves once, even if this tick took longer or
+        // shorter than the nominal interval used by other burst fields.
+        if (instantStrike) world.add<Dead>(field.effect);
     }
 }
 

@@ -1480,15 +1480,8 @@ struct LightningClock {
     double lastStrikeMillis = -1e18;
 };
 
-/// Marks a one-tick damage field as a LIGHTNING strike's, so the hit it
-/// resolves is reported in the strike's own cyan rather than as an ordinary
-/// petal hit.
-///
-/// A tag beside the effect rather than a fourth GroundEffectKind: the kind
-/// decides how a field is drawn, how wide it reaches for its victim and which
-/// side of the rim counts as inside, and a strike wants every one of those to
-/// stay exactly what the burst already had. All it wants is a different colour
-/// on the number.
+/// An instantaneous lightning strike. Combat resolves it once regardless
+/// of the tick duration and reports its hits as lightning damage.
 struct LightningBurst {};
 
 struct GroundEffect {

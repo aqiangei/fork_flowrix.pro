@@ -659,6 +659,8 @@ constexpr ChangelogEntry kChangelog[] = {
     {"2026年11月12日（宇宙血祭）",
      {"宇宙血祭现在会召唤宇宙怪物，长身怪的体节也保留宇宙稀有度",
       "召唤怪的基础生命和伤害为同种顶点的 2 倍，掉落沿用顶点规则"}},
+    {"2026年11月12日（闪电伤害）",
+     {"修复服务器帧间隔变长时闪电已显示却未扣血的问题，包括冥界蜈蚣战斗"}},
 };
 
 constexpr int kEntryCount = static_cast<int>(sizeof(kChangelog) / sizeof(kChangelog[0]));
