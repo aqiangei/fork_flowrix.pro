@@ -60,6 +60,10 @@ version; in `cpp/client/web/`, the text and markup code and
 - The C++ server takes no npm runtime dependency (the update never runs
   `npm install`); the only packages are the optional WebTransport pair.
 
+- For every player-facing game release, append a dated entry to
+  `cpp/client/ui/menu_changelog.cpp` before rebuilding the client. Include
+  the changes players can see or use, and note any fixes awaiting confirmation.
+
 ## Protocol
 
 Bump `kProtocolVersion` in `cpp/shared/net/protocol.h` whenever any message
