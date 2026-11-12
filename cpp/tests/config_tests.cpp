@@ -384,9 +384,9 @@ TEST(mob_speed_is_converted_to_units_per_second) {
     // at its own speed.
     CHECK_NEAR(r.mobStats(r.mobIndex("scorpion"), Rarity::Common).chaseSpeed,
                1.2 * kPlayerMaxSpeed, 1e-9);
-    // The florr variants chase as the gardn mob they are a variant of.
+    // Hel beetles pursue at 114% of a flower's base speed.
     CHECK_NEAR(r.mobStats(r.mobIndex("hel_beetle"), Rarity::Common).chaseSpeed,
-               r.mobStats(r.mobIndex("beetle"), Rarity::Common).chaseSpeed, 1e-9);
+               1.14 * kPlayerMaxSpeed, 1e-9);
     CHECK_NEAR(r.mobStats(r.mobIndex("golden_leafbug"), Rarity::Common).chaseSpeed,
                r.mobStats(r.mobIndex("leafbug"), Rarity::Common).chaseSpeed, 1e-9);
     const MobStats roach = r.mobStats(r.mobIndex("roach"), Rarity::Common);

@@ -619,8 +619,8 @@
         "size": 1.4291,
         "visual_scale": 1.0496,
         "visualOffsetX": 0.049,
-        "speed": 0.52,
-        "chase_speed": 0.95,
+        "speed": 0.624,
+        "chase_speed": 1.14,
         "cooldown": 2000,
         "xp": {
             "common": 2,
@@ -2578,7 +2578,7 @@
         "damage": 22,
         "health": 58,
         "size": 1.1667,
-        "speed": 0.68,
+        "speed": 0.816,
         "cooldown": 2000,
         "xp": {
             "common": 3,
@@ -2598,7 +2598,7 @@
         "centipede_ai": true,
         "range": 500,
         "groups": {
-            "hel": 0.22
+            "hel": 0.50
         },
         "poison": 0.005,
         "poisonDuration": 2000
@@ -2608,7 +2608,7 @@
         "damage": 17,
         "health": 45,
         "size": 1.1667,
-        "speed": 0.48,
+        "speed": 0.576,
         "cooldown": 2000,
         "xp": {
             "common": 1,
@@ -2641,8 +2641,8 @@
         "size": 1.08,
         "visual_scale": 1.0,
         "visualOffsetX": 0,
-        "speed": 0.58,
-        "chase_speed": 0.95,
+        "speed": 0.696,
+        "chase_speed": 1.14,
         "cooldown": 2000,
         "xp": {
             "common": 2,
@@ -2665,7 +2665,7 @@
             "hel": 0.28
         },
         "jump": {
-            "distance": 140,
+            "distance": 168,
             "pauseMs": 1250
         }
     }
