@@ -133,7 +133,7 @@ inline constexpr double kFrictionReferenceRate = 20.0;
 inline constexpr double kFullSpeedCursorDistance = 200.0;
 
 inline constexpr double kRespawnInvulnerabilitySeconds = 3.0;
-inline constexpr int kAutoRespawnDelaySeconds = 8;
+inline constexpr int kAutoRespawnDelaySeconds = 4;
 
 // -- teleporters -------------------------------------------------------------
 //

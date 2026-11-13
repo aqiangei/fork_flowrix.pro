@@ -283,7 +283,7 @@
         "size": 4,
         "cooldown": 1,
         "price": 60,
-        "description": "It increases your body damage and has lightning",
+        "description": "Pass through mobs and training dummies while still taking contact damage. Strikes using the strongest Lightning in your active loadout and its reload.",
         "color": "#000000",
         "speed": 2,
         "count": 0,

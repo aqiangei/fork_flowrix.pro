@@ -117,6 +117,8 @@ TEST(ruby_rarity_stats_and_fixed_and_random_drops_are_available) {
     }
     CHECK_NEAR(registry.petalStats(ruby, Rarity::Common).lightningRepeatChance, 0.8, 1e-9);
     CHECK_NEAR(registry.petalStats(ruby, Rarity::Apex).lightningRepeatChance, 0.95, 1e-9);
+    CHECK_NEAR(registry.petalStats(ruby, Rarity::Universal).lightningRepeatChance, 0.95, 1e-9);
+    CHECK_EQ(registry.petalStats(ruby, Rarity::Universal).maxLightningRepeats, 7);
     CHECK(!registry.petal(ruby).image.empty());
     DropTables drops;
     std::string error;

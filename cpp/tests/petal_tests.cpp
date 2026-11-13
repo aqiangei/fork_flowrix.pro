@@ -79,7 +79,8 @@ const char* const kPetalsJson = R"JSON({
   "relic":    {"name":"Relic","damage":0,"health":null,"size":1,"cooldown":1,"count":0,"range":0,"fixedDirection":0,"noPhysics":true,"playerModifiers":{"maxHealth":1.1},"color":"#C7A138"},
   "champion_crown":{"name":"Champion's Crown","damage":0,"health":null,"size":1,"cooldown":1,"count":0,"range":0,"equipFlags":"Crown","noPhysics":true,"color":"#FFDC06"},
   "rubber":   {"name":"Rubber","damage":1,"health":30,"size":1.2,"cooldown":2500,"count":1,"color":"#EEEEEE"},
-  "cutter": {"name":"Cutter","damage":0,"health":null,"size":1,"cooldown":1,"count":0,"noPhysics":true},
+  "cutter": {"name":"Cutter","damage":0,"health":null,"size":1,"cooldown":1,"count":0,"equipFlags":"Cutter","noPhysics":true},
+  "lightning_cutter": {"name":"Lightning Cutter","damage":1,"health":null,"size":1,"count":0,"equipFlags":"Cutter","noPhysics":true},
   "ruby":     {"name":"Ruby","damage":8,"health":20,"size":1,"cooldown":3000,"count":1,"lightningRepeatChance":0.7,"color":"#ef3658"},
   "amulet":   {"name":"Amulet","damage":0,"health":10,"size":1,"cooldown":2000,"count":1,"defendOnly":true,"color":"#FF94C9"},
   "basil":    {"name":"Basil","damage":5,"health":15,"size":1.3,"cooldown":2500,"count":1,"defendOnly":true,"ignoresMobs":true,"color":"#319E40"},
@@ -6005,6 +6006,33 @@ TEST(ruby_uses_the_strongest_active_slot_and_stops_when_unequipped) {
     rig.tick();
     CHECK_NEAR(rig.modifiers().lightningRepeatChance, 0, 1e-9);
     CHECK_EQ(rig.modifiers().maxLightningRepeats, 0);
+}
+
+TEST(lightning_cutter_phases_and_uses_the_highest_active_lightning_and_its_reload) {
+    if (!contentLoaded()) return;
+    Rig rig;
+    const auto& registry = fixture().registry;
+    rig.equip(0, "lightning_cutter");
+    rig.equip(1, "lightning_cutter");
+    rig.equip(kLoadoutActiveSlots, "lightning", Rarity::Universal);
+    const Vec2 at = rig.position(rig.player);
+    addMob(rig, {at.x + 500.0, at.y});
+    rig.tick();
+    CHECK(rig.modifiers().passThroughMobs);
+    CHECK_EQ(countStrikes(rig), std::size_t(0));
+
+    rig.equip(2, "lightning");
+    rig.equip(3, "lightning", Rarity::Epic);
+    rig.equip(4, "capacitor");
+    rig.tick();
+    CHECK_EQ(countStrikes(rig), std::size_t(1));
+    const PetalStats stats = registry.petalStats(petalId("lightning"), Rarity::Epic);
+    CHECK_NEAR(lastStrikeDamage(rig), stats.damage * 1.15, 1e-9);
+    const double next = rig.now + stats.reloadMillis;
+    CHECK_NEAR(rig.world.get<PetalSlotState>(rig.player).nextLightningMillis, next, 1e-9);
+    rig.tick(static_cast<int>(stats.reloadMillis / net::kTickMillis) - 1);
+    CHECK_EQ(countStrikes(rig), std::size_t(1));
+    CHECK(rig.tickUntil([&] { return countStrikes(rig) == 2; }, 3));
 }
 
 TEST(cutter_only_active_equipment_removes_mob_separation) {

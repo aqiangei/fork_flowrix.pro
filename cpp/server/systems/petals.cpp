@@ -57,11 +57,6 @@ constexpr const char* kFlowerPetMobId = "glitch_flower";
 // they do is code and not a number, and because each of them fires at a
 // different moment in a petal's life.
 
-/// How far apart a worn lightning cutter's strikes are: 500 ms, so at most
-/// twice a second. The limiter is per PLAYER rather than per petal, so a second
-/// blade shares the first one's cadence instead of doubling the strike rate.
-constexpr double kLightningCutterIntervalMillis = 500.0;
-
 /// An explosion reaches three times the petal's DRAWN size, and the reference
 /// arrives at that by multiplying by 40 twice -- once turning the size stat
 /// into pixels and once again inside the blast -- so the radius really is this
@@ -1460,7 +1455,7 @@ PetalSystem::Aggregate PetalSystem::recomputeModifiers(World& world,
                 // petal is reloading; this is the same rule as tickBroadcast.
                 const PetalConfig& config = registry.petal(equipped.configIndex);
                 equipFlags |= config.equipFlags;
-                if (config.id == "cutter")
+                if (config.equipFlags & EquipCutter)
                     aggregate.modifiers.passThroughMobs = true;
                 if (config.id == "capacitor") {
                     double& scale = aggregate.modifiers.lightningPetalDamageScale;
@@ -3048,32 +3043,27 @@ void PetalSystem::strikeWornLightning(World& world, const ContentRegistry& regis
     const Transform* transform = world.tryGet<Transform>(player);
     if (loadout == nullptr || transform == nullptr) return;
 
-    // The strongest blade strikes, once. The cutter is worn rather than spawned
-    // -- there is no ring instance to hang a timer off -- so the loadout is
-    // what drives this, and the flower's own limiter is what paces it.
-    double damage = 0;
-    // The tier that produced `damage`, carried along so a cutter with no damage
-    // stat at all falls back onto the ladder at its OWN tier rather than at
-    // common's.
-    Rarity tier = Rarity::Common;
+    // All worn blades share one strike timer. Only active Lightning slots
+    // supply a strike, including a Mimic resolved to Lightning.
+    EquippedPetal lightning;
     bool worn = false;
     for (int i = 0; i < kLoadoutActiveSlots; ++i) {
         const EquippedPetal slot = equippedPetal(registry, *loadout, i);
         if (slot.empty()) continue;
-        if (registry.petal(slot.configIndex).id != "lightning_cutter") continue;
-        worn = true;
-        damage = std::max(damage, registry.petalStats(slot.configIndex, slot.rarity).damage);
-        // Maximised independently of the damage, as the raindrop aura maximises
-        // its reach: two cutters are one strike, and it is thrown at the best
-        // of everything the flower is wearing.
-        if (rarityIndex(slot.rarity) > rarityIndex(tier)) tier = slot.rarity;
+        const PetalConfig& config = registry.petal(slot.configIndex);
+        if (config.equipFlags & EquipLightningCutter) worn = true;
+        if (config.id == "lightning" &&
+            (lightning.empty() || rarityIndex(slot.rarity) > rarityIndex(lightning.rarity))) {
+            lightning = slot;
+        }
     }
-    if (!worn) return;
+    if (!worn || lightning.empty()) return;
 
-    // Armed before the strike: emitting creates an entity, and nothing after
-    // this line may depend on the flower's columns staying put.
-    state->nextLightningMillis = nowMillis + kLightningCutterIntervalMillis;
-    strikeLightning(world, player, transform->position, damage, tier);
+    const PetalStats stats = equippedPetalStats(registry, lightning);
+    const auto* modifiers = world.tryGet<PlayerModifiers>(player);
+    const double capacitorScale = modifiers ? modifiers->lightningPetalDamageScale : 1.0;
+    state->nextLightningMillis = nowMillis + reloadMillisFor(stats, reloadScaleOf(world, registry, player));
+    strikeLightning(world, player, transform->position, stats.damage, lightning.rarity, capacitorScale);
 }
 
 void PetalSystem::strikeBatteries(World& world, const ContentRegistry& registry, Entity player,

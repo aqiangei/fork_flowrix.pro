@@ -398,7 +398,7 @@ constexpr Pair kPetalDescs[] = {
     {"lentil", "增加花瓣对敌人的吸引力。"},
     {"light", "比大多数花瓣弱，但冷却非常快。"},
     {"lightning", "连锁攻击附近的多个敌人。"},
-    {"lightning_cutter", "提高体伤，并附带闪电"},
+    {"lightning_cutter", "可穿过怪物和假人，仍受接触伤害。按主动栏最高稀有度的闪电发动电击，并沿用其冷却。"},
     {"lotus", "吸收花朵收到的{#Attribute/PoisonNoColon}伤害。"},
     {"magic_bubble", "无魔法者才会遵守物理定律。"},
     {"magic_cactus", "提高你的最大魔力容量。"},
