@@ -545,7 +545,9 @@ void LootSystem::awardDeaths(World& world, const ContentRegistry& content, Rng& 
         // too: adding LootAwarded moves the corpse out of its row, and the
         // corpse swapped into that row may be standing on another map.
         const std::uint16_t mobIndex = type->configIndex;
-        const Rarity mobRarity = type->rarity;
+        // Universal mobs use the Apex reward ladder, including the full batch.
+        const Rarity mobRarity =
+            type->rarity == Rarity::Universal ? Rarity::Apex : type->rarity;
         const Vec2 at = transform->position;
         const Realm realm = transform->realm;
         const Dead* dead = world.tryGet<Dead>(corpse);

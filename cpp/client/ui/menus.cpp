@@ -134,10 +134,11 @@ EM_JS(void, flix_open_ashflor_feedback, (const char* boardBase, const char* user
 #endif
 
 void openAshflorFeedbackBoard(const std::string& username) {
+    constexpr char boardUrl[] = "https://154.8.157.208/feedback.html?v=prog5";
 #ifdef __EMSCRIPTEN__
-    flix_open_ashflor_feedback("https://ashflor.com/feedback.html?v=prog5", username.c_str());
+    flix_open_ashflor_feedback(boardUrl, username.c_str());
 #else
-    openExternalLink("https://ashflor.com/feedback.html?v=prog5&from=native");
+    openExternalLink(std::string(boardUrl) + "&from=native");
 #endif
 }
 

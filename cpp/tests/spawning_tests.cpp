@@ -3417,6 +3417,32 @@ TEST(chaff_is_flat_two_tiers_below_the_mob) {
     }
 }
 
+TEST(universal_soldier_termite_pays_all_three_apex_loot_rows) {
+    World world;
+    CommandBuffer commands{world};
+    SpatialGrid grid;
+    ShippedLoot loot;
+    EventQueue events;
+    Rng rng(808);
+    const auto& content = shipped();
+    const Entity player = makePlayer(world, kCentre + Vec2{5000, 0});
+    makeCorpse(world, content.mobIndex("soldier_termite"), Rarity::Universal, kCentre,
+               player, {player});
+    loot.run(world, grid, content, rng, 0.0, net::kTickSeconds, commands, events);
+    commands.flush();
+
+    const auto drops = liveDrops(world);
+    for (const char* id : {"soldier_termite_egg", "triangle", "relic"}) {
+        const auto petal = content.petalIndex(id);
+        const auto count = std::count_if(drops.begin(), drops.end(), [&](Entity drop) {
+            const auto& item = world.get<DropItem>(drop);
+            return item.configIndex == petal && item.rarity < Rarity::Apex;
+        });
+        CHECK_EQ(count, 10);
+    }
+    CHECK(drops.size() == 30 || drops.size() == 31);
+}
+
 TEST(a_kill_above_unusual_grades_exactly_one_of_its_rows) {
     World world;
     CommandBuffer commands{world};
