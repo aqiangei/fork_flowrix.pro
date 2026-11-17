@@ -61,11 +61,51 @@
             font-size: 20px;
         }
 
+        #flowrix-move-notice {
+            position: absolute;
+            z-index: 2;
+            top: max(12px, env(safe-area-inset-top));
+            left: 50%;
+            transform: translateX(-50%);
+            width: max-content;
+            max-width: calc(100% - 24px);
+            padding: 8px 20px 10px;
+            border: 2px solid #ffd454;
+            border-radius: 12px;
+            background: #172530;
+            box-shadow: 0 4px 14px #0006;
+            color: #fff;
+            text-align: center;
+            line-height: 1.35;
+            pointer-events: none;
+        }
+        #flowrix-move-notice strong {
+            display: block;
+            font-size: clamp(18px, 3.4vw, 32px);
+        }
+        #flowrix-move-notice p {
+            font-size: clamp(14px, 1.6vw, 18px);
+        }
+        #flowrix-move-notice a {
+            color: #ffd454;
+            pointer-events: auto;
+        }
+        @media (max-width: 600px) and (min-height: 451px) {
+            #flowrix-move-notice { top: 17vh; }
+        }
+        @media (max-height: 450px) {
+            #flowrix-move-notice { top: 5px; padding: 3px 12px; }
+            #flowrix-move-notice strong { font-size: 18px; }
+        }
     </style>
 </head>
 <body>
     <span id="loadingScreen">Loading...</span>
     <canvas id="canvas" oncontextmenu="return false;"></canvas>
+    <aside id="flowrix-move-notice" lang="zh-CN" aria-label="游戏换址公告">
+        <strong>游戏即将换地址，请记住 <a href="https://ashflor.com/" target="_blank" rel="noopener">ashflor.com</a></strong>
+        <p>新游戏地址届时会在 ashflor.com 公布。</p>
+    </aside>
     <script>
 (function () {
   const query = new URLSearchParams(location.search);

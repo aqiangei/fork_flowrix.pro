@@ -34,6 +34,7 @@
 #include "client/ui/item_tile.h"
 #include "client/ui/text.h"
 #ifdef __EMSCRIPTEN__
+#include <emscripten.h>
 #include "client/ui/text_atlas.h"
 #endif
 #include "client/ui/text_input.h"
@@ -48,6 +49,13 @@ namespace flix {
 using namespace flix::ui;
 
 namespace {
+
+#ifdef __EMSCRIPTEN__
+EM_JS(void, syncMoveNotice, (int visible), {
+    const notice = document.getElementById('flowrix-move-notice');
+    if (notice) notice.hidden = !visible;
+});
+#endif
 
 /// The wash over the world while the death card is up: a mid grey rather than
 /// black, so it mutes the colour as much as it darkens.
@@ -733,6 +741,14 @@ void App::frame(double dt) {
     // widens what it streams as soon as an observer goes on.
     camera_.loadoutZoom = loadoutCameraZoom(net_.profile(), content());
     const bool inWorld = screen_ == Screen::Playing || screen_ == Screen::Dead;
+#ifdef __EMSCRIPTEN__
+    const bool showMoveNotice = !inWorld && !net_.joinPending();
+    static bool moveNoticeWasVisible = true;
+    if (showMoveNotice != moveNoticeWasVisible) {
+        syncMoveNotice(showMoveNotice);
+        moveNoticeWasVisible = showMoveNotice;
+    }
+#endif
     menus_.setInGame(inWorld);
     // Re-measured every frame, so the craft panel turns into the oracle's (or
     // the trader's) as the flower walks up and back into the forge as it walks
