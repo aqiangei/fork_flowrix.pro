@@ -2234,6 +2234,15 @@ TEST(a_fourth_universal_holder_displaces_only_the_oldest_and_refunds_bag_and_loa
         return p.stackCount(rose, Rarity::Universal) == 1u && p.stackCount(rose, Rarity::Apex) == 0u;
     }));
 
+    // The displaced holder can afford another forge, but the shared
+    // replacement cooldown prevents an immediate buyback before any debit.
+    standAtTitan(h, both, "rival");
+    rival.requestTitanForge(rose);
+    CHECK(awaitForge(h, both, rival, outcome));
+    CHECK(!outcome.success);
+    CHECK(outcome.reason.find("can be replaced in") != std::string::npos);
+    CHECK_EQ(rival.profile().stackCount(rose, Rarity::Apex), 2u * kTitanForgeRefund);
+
     // The other two holders keep their petals, and the order is persisted.
     const Database& db = h.server.database();
     const Account* absent = db.findUser("absent");

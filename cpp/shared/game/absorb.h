@@ -27,7 +27,7 @@ inline constexpr double kAbsorbXpGrowth = 7.0;
 inline constexpr double kAbsorbUnitsPerXp = kAbsorbXpGrowth * kAbsorbXpGrowth;
 
 /// Base XP multiplier for absorbing any eligible rarity.
-inline constexpr double kAbsorbBaseXpScale = 3.0;
+inline constexpr double kAbsorbBaseXpScale = 6.0;
 
 /// How many petal stacks one Absorb request may name. More than a grid holds:
 /// a type at every ladder tier for every petal there is.

@@ -3387,8 +3387,22 @@ void GameServer::handleTitanForge(Session& session, net::Connection& connection,
         return;
     }
 
-    // Five apex in, one universal out, every time: there is no roll to lose,
-    // and so nothing to hand back.
+    const bool tracked = tracksUniversals(session.userId);
+    const auto& petalId = content().petal(petalIndex).id;
+    auto holders = tracked ? universalHolderOrder(petalIndex) : std::vector<std::string>{};
+    const bool replacing = holders.size() >= kTitanHolderLimit;
+    const double now = static_cast<double>(shopClockNow());
+    if (replacing) {
+        const double availableAt = database_.storedTable("universalReplacementAt")[petalId].asDouble();
+        const double remaining = availableAt - now;
+        if (remaining > 0.0) {
+            reply(false, "This Universal can be replaced in " +
+                         std::to_string(static_cast<int>(std::ceil(remaining))) + " seconds.");
+            return;
+        }
+    }
+
+    // Five apex in, one universal out, every time: there is no roll to lose.
     if (!takeFromInventory(record, petalIndex, Rarity::Apex, kTitanForgeCost)) {
         reply(false, "You need " + std::to_string(kTitanForgeCost) + " Apex " +
                          content().petal(petalIndex).name + " to forge it.");
@@ -3397,15 +3411,12 @@ void GameServer::handleTitanForge(Session& session, net::Connection& connection,
     }
     giveToInventory(record, petalIndex, Rarity::Universal, 1);
     database_.markDirty();
-    const bool tracked = tracksUniversals(session.userId);
     std::printf("[TITAN] %s forged a universal %s%s\n", session.username.c_str(),
                 content().petal(petalIndex).id.c_str(), tracked ? "" : " (admin, untracked)");
 
     // The new holder joins at the back; only the oldest loses theirs when
     // the three places fill up. Database admins stay outside this queue.
     if (tracked) {
-        auto holders = universalHolderOrder(petalIndex);
-        holders.erase(std::remove(holders.begin(), holders.end(), session.userId), holders.end());
         holders.push_back(session.userId);
         const std::size_t displaced = holders.size() > kTitanHolderLimit
             ? holders.size() - kTitanHolderLimit : 0;
@@ -3414,7 +3425,10 @@ void GameServer::handleTitanForge(Session& session, net::Connection& connection,
         }
         Json order = Json::array();
         for (std::size_t i = displaced; i < holders.size(); ++i) order.push(holders[i]);
-        database_.rawTable("universalForgeOrder")[content().petal(petalIndex).id] = std::move(order);
+        database_.rawTable("universalForgeOrder")[petalId] = std::move(order);
+        if (replacing) {
+            database_.rawTable("universalReplacementAt")[petalId] = now + kTitanReplacementCooldownSeconds;
+        }
         universalHolders_.erase(petalIndex);
         announceRareCraft(session, petalIndex, Rarity::Universal);
     }

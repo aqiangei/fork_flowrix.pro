@@ -118,7 +118,7 @@ TEST(ruby_rarity_stats_and_fixed_and_random_drops_are_available) {
     CHECK_NEAR(registry.petalStats(ruby, Rarity::Common).lightningRepeatChance, 0.8, 1e-9);
     CHECK_NEAR(registry.petalStats(ruby, Rarity::Apex).lightningRepeatChance, 0.95, 1e-9);
     CHECK_NEAR(registry.petalStats(ruby, Rarity::Universal).lightningRepeatChance, 0.95, 1e-9);
-    CHECK_EQ(registry.petalStats(ruby, Rarity::Universal).maxLightningRepeats, 7);
+    CHECK_EQ(registry.petalStats(ruby, Rarity::Universal).maxLightningRepeats, 9);
     CHECK(!registry.petal(ruby).image.empty());
     DropTables drops;
     std::string error;
@@ -134,12 +134,12 @@ TEST(ruby_rarity_stats_and_fixed_and_random_drops_are_available) {
     for (auto index : drops.droppablePetals()) random = random || index == ruby;
     CHECK(random);
 }
-TEST(apex_ruby_allows_seven_extra_hits_and_clamps_the_combat_limit) {
+TEST(ruby_combat_allows_nine_extra_hits_and_clamps_the_limit) {
     RubyArena arena;
     auto& mods = arena.world.get<PlayerModifiers>(arena.player);
     mods.lightningRepeatChance = 1;
-    mods.maxLightningRepeats = 9;
-    CHECK_NEAR(arena.hit().applied, 80, 1e-9);
+    mods.maxLightningRepeats = 99;
+    CHECK_NEAR(arena.hit().applied, 100, 1e-9);
 }
 
 TEST(cutter_has_two_drop_sources) {

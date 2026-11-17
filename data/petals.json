@@ -1919,7 +1919,7 @@
         "size": 1.05,
         "cooldown": 3000,
         "price": 45,
-        "description": "Lightning has a high chance to strike the same mob again. Each extra strike rolls separately, up to the rarity limit. Only the strongest equipped Ruby applies.",
+        "description": "Lightning has a high chance to strike the same mob again. Each extra strike rolls separately, up to the rarity limit. Universal can add up to nine strikes. Only the strongest equipped Ruby applies.",
         "color": "#ef3658",
         "count": 1,
         "lightningRepeatChance": 0.8,

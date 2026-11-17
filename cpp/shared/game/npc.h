@@ -129,6 +129,8 @@ inline constexpr int kTitanForgeCost = 5;
 /// Up to three accounts may hold each Universal petal; the oldest yields
 /// their place when a new forge would exceed the limit.
 inline constexpr std::size_t kTitanHolderLimit = 3;
+/// Minimum time between two displacements of the same kind of Universal.
+inline constexpr double kTitanReplacementCooldownSeconds = 600.0;
 
 /// What the displaced holder gets back per Universal, bag or loadout:
 /// the Apex petals it was forged from, less the one the forge keeps.

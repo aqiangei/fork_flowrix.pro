@@ -601,7 +601,7 @@ DamageResult CombatSystem::applyDamage(World& world, Entity victim, Entity sourc
     const PlayerModifiers* modifiers = world.tryGet<PlayerModifiers>(dealer);
     const double chance = modifiers != nullptr ? modifiers->lightningRepeatChance : 0.0;
     const int limit = modifiers != nullptr
-                          ? std::clamp(modifiers->maxLightningRepeats, 0, kApexRubyMaxLightningRepeats)
+                          ? std::clamp(modifiers->maxLightningRepeats, 0, kUniversalRubyMaxLightningRepeats)
                           : 0;
     if (chance <= 0.0 || limit == 0) {
         return applyDamageOnce(world, victim, source, amount, nowMillis, kind);
