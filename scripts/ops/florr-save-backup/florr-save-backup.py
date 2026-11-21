@@ -22,7 +22,7 @@ import sys
 import tempfile
 
 TARGETS = {
-    "flowrix": ("154.219.105.161", "akuah", "/opt/akuah", "/var/www/akuah-maintenance"),
+    "flowrix": ("103.91.210.16", "akuah", "/opt/akuah", "/var/www/akuah-maintenance"),
     "one": ("154.219.105.158", "florrclone", "/var/lib/florrclone", "/var/www/florrclone-maintenance"),
     "two": ("154.219.105.161", "florr-fresh", "/var/lib/florr-fresh", "/var/www/florr-fresh-maintenance"),
     "three": ("154.219.105.164", "florr-third", "/var/lib/florr-third", "/var/lib/florr-third/maintenance"),
@@ -251,7 +251,9 @@ def collect_one(role, root, key, known_hosts):
         ["ssh", "-T", "-i", key, "-o", "IdentitiesOnly=yes", "-o", "BatchMode=yes",
          "-o", "StrictHostKeyChecking=yes", "-o", "GlobalKnownHostsFile=/dev/null",
          "-o", f"UserKnownHostsFile={known_hosts}", "-o", "ConnectTimeout=12",
-         "-o", "ServerAliveInterval=10", "-o", "ServerAliveCountMax=2", f"root@{host}"]
+         "-o", "ServerAliveInterval=10", "-o", "ServerAliveCountMax=2"]
+        + (["-p", "24009"] if role == "flowrix" else [])
+        + [f"root@{host}"]
         + (["export flowrix"] if role == "flowrix" else []),
         stdin=subprocess.DEVNULL, capture_output=True, timeout=255, check=False,
     )

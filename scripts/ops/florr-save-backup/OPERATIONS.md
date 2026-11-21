@@ -11,11 +11,12 @@ collector and on the game host when updating its exporter. Install the two
 systemd units on the collector. Provision its SSH credential and pinned host
 keys separately at the paths in the service unit.
 
-The two and flowrix sources share a host. Its authorized_keys entry for the
-collector is restricted to the Beijing source IP and the forced command
-/usr/bin/python3 /usr/local/libexec/florr-save-backup.py export-from-two.
-The forced command accepts an empty request for two or the exact request
-export flowrix. Other game hosts can keep their existing fixed export command.
+The Flowrix source is `103.91.210.16:24009`. Pin its SSH host key and
+restrict the collector's authorized key on that host to the Beijing source
+IP and the forced command
+`/usr/bin/python3 /usr/local/libexec/florr-save-backup.py export-from-two`.
+The collector sends the exact request `export flowrix` there. The separate
+AshFlor two source continues to use its own host and empty request.
 
 After changing the configuration, start florr-save-backup.service once and
 verify that its journal reports verified for flowrix, one, two and three.

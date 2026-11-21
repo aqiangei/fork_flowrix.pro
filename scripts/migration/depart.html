@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="origin">
+<title>Flowrix 搬家</title>
+<style>body{background:#172530;color:#fff;font:20px system-ui;text-align:center;padding:12vh 24px}a{color:#ffd454}h1{font-size:36px}</style>
+<h1>Flowrix 已搬家</h1><p id="status">正在携带登录状态前往新地址……</p>
+<p><a id="continue" href="http://103.91.210.16:6767/">进入新地址</a></p><p>请记住 ashflor.com，后续地址变更会在那里公布。</p>
+<script>
+(() => {
+  const target = new URL('http://103.91.210.16:6767/arrive.html');
+  const state = {version: 1, at: Date.now(), values: {}};
+  try {
+    for (const key of ['flowrix/session', 'flowrix/session-settings']) {
+      const value = localStorage.getItem(key);
+      if (value !== null && value.length <= 131072) state.values[key] = value;
+    }
+    // Fragments never go to HTTP access logs. No passwords or boot scripts move.
+    target.hash = 'flowrix-transfer=' + btoa(JSON.stringify(state));
+    document.getElementById('continue').href = target.href;
+    location.replace(target.href);
+  } catch (_) {
+    document.getElementById('status').textContent = '浏览器无法读取旧登录状态，请点击下方入口，在新地址重新登录。';
+  }
+})();
+</script></html>

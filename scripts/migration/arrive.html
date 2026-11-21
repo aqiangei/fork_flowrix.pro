@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer">
+<title>恢复 Flowrix 登录</title>
+<style>body{background:#172530;color:#fff;font:20px system-ui;text-align:center;padding:12vh 24px}a{color:#ffd454}</style>
+<h1>欢迎来到 Flowrix 新地址</h1><p id="status">正在恢复登录状态……</p><a href="/">进入游戏</a>
+<script>
+(() => {
+  const fragment = location.hash;
+  history.replaceState(null, '', location.pathname);
+  try {
+    const source = new URL(document.referrer);
+    if (!['http://154.219.105.161', 'https://154.219.105.161'].includes(source.origin)) throw Error('source');
+    if (!fragment.startsWith('#flowrix-transfer=') || fragment.length > 360000) throw Error('size');
+    const state = JSON.parse(atob(fragment.slice('#flowrix-transfer='.length)));
+    if (state.version !== 1 || !Number.isFinite(state.at) || Math.abs(Date.now() - state.at) > 300000) throw Error('expired');
+    const entries = Object.entries(state.values);
+    for (const [key, value] of entries) {
+      if (!['flowrix/session', 'flowrix/session-settings'].includes(key) || typeof value !== 'string' || value.length > 131072) throw Error('entry');
+      atob(value);
+    }
+    const previous = entries.map(([key]) => [key, localStorage.getItem(key)]);
+    try {
+      for (const [key, value] of entries) localStorage.setItem(key, value);
+    } catch (error) {
+      for (const [key, value] of previous) {
+        try { if (value === null) localStorage.removeItem(key); else localStorage.setItem(key, value); } catch (_) {}
+      }
+      throw error;
+    }
+    location.replace('/');
+  } catch (_) {
+    document.getElementById('status').textContent = '未能自动恢复登录，请点击进入游戏并重新登录。存档仍在原账号中。';
+  }
+})();
+</script></html>
